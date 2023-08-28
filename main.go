@@ -21,24 +21,18 @@ import (
 )
 
 func main() {
-	pds := flag.String("pds", "wss://bsky.social/", "Address of the PDS to use")
-	app := flag.String("app", "https://bsky.app/", "Address of the app to use")
+	raddr := flag.String("raddr", "wss://bsky.social/", "Remote address of the PDS to use")
 
 	flag.Parse()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	pu, err := url.Parse(*pds)
+	pu, err := url.Parse(*raddr)
 	if err != nil {
 		panic(err)
 	}
 	pu = pu.JoinPath("xrpc", "com.atproto.sync.subscribeRepos")
-
-	au, err := url.Parse(*app)
-	if err != nil {
-		panic(err)
-	}
 
 	atu, err := url.Parse("at://")
 	if err != nil {
@@ -51,7 +45,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	log.Println("Connected to", *pds)
+	log.Println("Connected to", *raddr)
 
 	handlers := events.RepoStreamCallbacks{
 		RepoCommit: func(c *atproto.SyncSubscribeRepos_Commit) error {
@@ -91,18 +85,29 @@ func main() {
 						continue l
 					}
 
-					if post.LexiconTypeID != "app.bsky.feed.post" {
-						continue l
-					}
+					if post.LexiconTypeID == "app.bsky.feed.post" {
+						fmt.Println(
+							"Created:",
+							post.CreatedAt,
+							atu.JoinPath(rp.RepoDid(), post.LexiconTypeID, path.Base(op.Path)),
+							post.Text,
+							post.Reply != nil,
+							post.Langs,
+						)
+					} else if post.LexiconTypeID == "app.bsky.feed.like" {
+						var like bsky.FeedLike
+						if err := json.Unmarshal(b, &like); err != nil {
+							log.Println("Could not unmarshal like, skipping:", err)
 
-					fmt.Println(
-						post.CreatedAt,
-						post.Text,
-						post.Reply != nil,
-						post.Langs,
-						au.JoinPath("profile", rp.RepoDid(), "post", path.Base(op.Path)),
-						atu.JoinPath(rp.RepoDid(), post.LexiconTypeID, path.Base(op.Path)),
-					)
+							continue l
+						}
+
+						fmt.Println(
+							"Liked:",
+							post.CreatedAt,
+							like.Subject.Uri,
+						)
+					}
 				}
 			}
 
