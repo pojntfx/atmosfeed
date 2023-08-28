@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"path"
 
 	"github.com/bluesky-social/indigo/api/atproto"
 	"github.com/bluesky-social/indigo/api/bsky"
@@ -20,26 +21,37 @@ import (
 )
 
 func main() {
-	raddr := flag.String("raddr", "wss://bsky.social/", "Remote address of the PDS to use")
+	pds := flag.String("pds", "wss://bsky.social/", "Address of the PDS to use")
+	app := flag.String("app", "https://bsky.app/", "Address of the app to use")
 
 	flag.Parse()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	u, err := url.Parse(*raddr)
+	pu, err := url.Parse(*pds)
 	if err != nil {
 		panic(err)
 	}
-	u = u.JoinPath("xrpc", "com.atproto.sync.subscribeRepos")
+	pu = pu.JoinPath("xrpc", "com.atproto.sync.subscribeRepos")
 
-	conn, _, err := websocket.DefaultDialer.DialContext(ctx, u.String(), nil)
+	au, err := url.Parse(*app)
+	if err != nil {
+		panic(err)
+	}
+
+	atu, err := url.Parse("at://")
+	if err != nil {
+		panic(err)
+	}
+
+	conn, _, err := websocket.DefaultDialer.DialContext(ctx, pu.String(), nil)
 	if err != nil {
 		panic(err)
 	}
 	defer conn.Close()
 
-	log.Println("Connected to", *raddr)
+	log.Println("Connected to", *pds)
 
 	handlers := events.RepoStreamCallbacks{
 		RepoCommit: func(c *atproto.SyncSubscribeRepos_Commit) error {
@@ -83,7 +95,14 @@ func main() {
 						continue l
 					}
 
-					fmt.Println(post.CreatedAt, post.Text)
+					fmt.Println(
+						post.CreatedAt,
+						post.Text,
+						post.Reply != nil,
+						post.Langs,
+						au.JoinPath("profile", rp.RepoDid(), "post", path.Base(op.Path)),
+						atu.JoinPath(rp.RepoDid(), post.LexiconTypeID, path.Base(op.Path)),
+					)
 				}
 			}
 
