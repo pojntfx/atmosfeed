@@ -17,13 +17,13 @@ jobs:
         target:
           - id: test
             src: .
-            os: golang:bullseye
+            os: golang:bookworm
             flags: ""
             cmd: go test ./...
             dst: out/*
           - id: go
             src: .
-            os: golang:bullseye
+            os: golang:bookworm
             flags: ""
             cmd: ./Hydrunfile go atmosfeed
             dst: out/*
