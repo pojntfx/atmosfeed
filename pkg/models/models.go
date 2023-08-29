@@ -9,10 +9,9 @@ import (
 )
 
 type Post struct {
-	ID        int32
-	CreatedAt time.Time
-	Did       string
+	Did string
 	Rkey      string
+	CreatedAt time.Time
 	Text      string
 	Reply     bool
 	Langs     []string

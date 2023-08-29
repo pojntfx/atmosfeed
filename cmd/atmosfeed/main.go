@@ -3,9 +3,10 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"flag"
-	"fmt"
 	"log"
 	"net/url"
 	"os"
@@ -16,9 +17,10 @@ import (
 	"github.com/bluesky-social/indigo/api/bsky"
 	"github.com/bluesky-social/indigo/events"
 	"github.com/bluesky-social/indigo/events/schedulers/sequential"
-	"github.com/bluesky-social/indigo/lex/util"
+	lutil "github.com/bluesky-social/indigo/lex/util"
 	"github.com/bluesky-social/indigo/repo"
 	"github.com/bluesky-social/indigo/repomgr"
+	iutil "github.com/bluesky-social/indigo/util"
 	"github.com/gorilla/websocket"
 	"github.com/pojntfx/atmosfeed/pkg/persisters"
 )
@@ -44,11 +46,6 @@ func main() {
 		panic(err)
 	}
 	pu = pu.JoinPath("xrpc", "com.atproto.sync.subscribeRepos")
-
-	atu, err := url.Parse("at://")
-	if err != nil {
-		panic(err)
-	}
 
 	conn, _, err := websocket.DefaultDialer.DialContext(ctx, pu.String(), nil)
 	if err != nil {
@@ -86,7 +83,7 @@ func main() {
 						continue l
 					}
 
-					d := util.LexiconTypeDecoder{
+					d := lutil.LexiconTypeDecoder{
 						Val: res,
 					}
 
@@ -105,23 +102,26 @@ func main() {
 					}
 
 					if post.LexiconTypeID == "app.bsky.feed.post" {
-						createdAt, err := time.Parse(time.RFC3339, post.CreatedAt)
+						createdAt, err := time.Parse(time.RFC3339Nano, post.CreatedAt)
 						if err != nil {
-							log.Println("Could not parse post date, skipping:", err)
+							createdAt, err = time.Parse("2006-01-02T15:04:05.999999", post.CreatedAt) // For some reason, Bsky sometimes seems to not specify the timezone
+							if err != nil {
 
-							continue l
+								log.Println("Could not parse post date, skipping:", err)
+
+								continue l
+							}
 						}
 
-						id, err := p.CreatePost(
+						if err := p.CreatePost(
 							ctx,
-							createdAt,
 							rp.RepoDid(),
 							path.Base(op.Path),
+							createdAt,
 							post.Text,
 							post.Reply != nil,
 							post.Langs,
-						)
-						if err != nil {
+						); err != nil {
 							log.Println("Could not insert post, skipping:", err)
 
 							continue l
@@ -129,9 +129,9 @@ func main() {
 
 						if *verbose {
 							log.Println(
-								id,
+								rp.RepoDid(),
+								path.Base(op.Path),
 								post.CreatedAt,
-								atu.JoinPath(rp.RepoDid(), post.LexiconTypeID, path.Base(op.Path)),
 								post.Text,
 								post.Reply != nil,
 								post.Langs,
@@ -146,11 +146,37 @@ func main() {
 							continue l
 						}
 
-						fmt.Println(
-							"Liked:",
-							post.CreatedAt,
-							like.Subject.Uri,
+						u, err := iutil.ParseAtUri(like.Subject.Uri)
+						if err != nil {
+							log.Println("Could not parse like subject URI, skipping:", err)
+
+							continue l
+						}
+
+						post, err := p.LikePost(
+							ctx,
+							u.Did,
+							u.Rkey,
 						)
+						if err != nil {
+							if !errors.Is(err, sql.ErrNoRows) {
+								log.Println("Could not update post, skipping:", err)
+							}
+
+							continue l
+						}
+
+						if *verbose {
+							log.Println(
+								post.Did,
+								post.Rkey,
+								post.CreatedAt,
+								post.Text,
+								post.Reply,
+								post.Langs,
+								post.Likes,
+							)
+						}
 					}
 				}
 			}

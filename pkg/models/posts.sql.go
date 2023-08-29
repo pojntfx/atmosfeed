@@ -12,31 +12,64 @@ import (
 	"github.com/lib/pq"
 )
 
-const createPost = `-- name: CreatePost :one
-insert into posts (created_at, did, rkey, text, reply, langs, likes)
+const createPost = `-- name: CreatePost :exec
+insert into posts (
+        did,
+        rkey,
+        created_at,
+        text,
+        reply,
+        langs,
+        likes
+    )
 values ($1, $2, $3, $4, $5, $6, 0)
-returning id
 `
 
 type CreatePostParams struct {
-	CreatedAt time.Time
-	Did       string
+	Did string
 	Rkey      string
+	CreatedAt time.Time
 	Text      string
 	Reply     bool
 	Langs     []string
 }
 
-func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (int32, error) {
-	row := q.db.QueryRowContext(ctx, createPost,
-		arg.CreatedAt,
+func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) error {
+	_, err := q.db.ExecContext(ctx, createPost,
 		arg.Did,
 		arg.Rkey,
+		arg.CreatedAt,
 		arg.Text,
 		arg.Reply,
 		pq.Array(arg.Langs),
 	)
-	var id int32
-	err := row.Scan(&id)
-	return id, err
+	return err
+}
+
+const likePost = `-- name: LikePost :one
+update posts
+set likes = likes + 1
+where did = $1
+    and rkey = $2
+returning did, rkey, created_at, text, reply, langs, likes
+`
+
+type LikePostParams struct {
+	Did string
+	Rkey      string
+}
+
+func (q *Queries) LikePost(ctx context.Context, arg LikePostParams) (Post, error) {
+	row := q.db.QueryRowContext(ctx, likePost, arg.Did, arg.Rkey)
+	var i Post
+	err := row.Scan(
+		&i.Did,
+		&i.Rkey,
+		&i.CreatedAt,
+		&i.Text,
+		&i.Reply,
+		pq.Array(&i.Langs),
+		&i.Likes,
+	)
+	return i, err
 }
