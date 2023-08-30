@@ -9,7 +9,7 @@ import (
 )
 
 type Post struct {
-	Did string
+	Did       string
 	Rkey      string
 	CreatedAt time.Time
 	Text      string

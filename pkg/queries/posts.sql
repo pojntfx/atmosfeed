@@ -1,4 +1,4 @@
--- name: CreatePost :exec
+-- name: CreatePost :one
 insert into posts (
         did,
         rkey,
@@ -8,7 +8,8 @@ insert into posts (
         langs,
         likes
     )
-values ($1, $2, $3, $4, $5, $6, 0);
+values ($1, $2, $3, $4, $5, $6, 0)
+returning *;
 -- name: LikePost :one
 update posts
 set likes = likes + 1

@@ -15,7 +15,7 @@ func (p *Persister) CreatePost(
 	text string,
 	reply bool,
 	langs []string,
-) error {
+) (models.Post, error) {
 	return p.queries.CreatePost(ctx, models.CreatePostParams{
 		Did:       did,
 		Rkey:      rkey,

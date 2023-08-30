@@ -22,6 +22,7 @@ import (
 	"github.com/bluesky-social/indigo/repomgr"
 	iutil "github.com/bluesky-social/indigo/util"
 	"github.com/gorilla/websocket"
+	"github.com/pojntfx/atmosfeed/pkg/models"
 	"github.com/pojntfx/atmosfeed/pkg/persisters"
 )
 
@@ -62,6 +63,10 @@ func main() {
 	}
 
 	log.Println("Connected to PostgreSQL")
+
+	classify := func(post models.Post) bool {
+		return true
+	}
 
 	handlers := events.RepoStreamCallbacks{
 		RepoCommit: func(c *atproto.SyncSubscribeRepos_Commit) error {
@@ -113,7 +118,7 @@ func main() {
 							}
 						}
 
-						if err := p.CreatePost(
+						post, err := p.CreatePost(
 							ctx,
 							rp.RepoDid(),
 							path.Base(op.Path),
@@ -121,22 +126,15 @@ func main() {
 							post.Text,
 							post.Reply != nil,
 							post.Langs,
-						); err != nil {
+						)
+						if err != nil {
 							log.Println("Could not insert post, skipping:", err)
 
 							continue l
 						}
 
-						if *verbose {
-							log.Println(
-								rp.RepoDid(),
-								path.Base(op.Path),
-								post.CreatedAt,
-								post.Text,
-								post.Reply != nil,
-								post.Langs,
-								0,
-							)
+						if *verbose && classify(post) {
+							log.Println(post)
 						}
 					} else if post.LexiconTypeID == "app.bsky.feed.like" {
 						var like bsky.FeedLike
@@ -166,16 +164,8 @@ func main() {
 							continue l
 						}
 
-						if *verbose {
-							log.Println(
-								post.Did,
-								post.Rkey,
-								post.CreatedAt,
-								post.Text,
-								post.Reply,
-								post.Langs,
-								post.Likes,
-							)
+						if *verbose && classify(post) {
+							log.Println(post)
 						}
 					}
 				}

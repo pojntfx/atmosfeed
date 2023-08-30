@@ -12,7 +12,7 @@ import (
 	"github.com/lib/pq"
 )
 
-const createPost = `-- name: CreatePost :exec
+const createPost = `-- name: CreatePost :one
 insert into posts (
         did,
         rkey,
@@ -23,10 +23,11 @@ insert into posts (
         likes
     )
 values ($1, $2, $3, $4, $5, $6, 0)
+returning did, rkey, created_at, text, reply, langs, likes
 `
 
 type CreatePostParams struct {
-	Did string
+	Did       string
 	Rkey      string
 	CreatedAt time.Time
 	Text      string
@@ -34,8 +35,8 @@ type CreatePostParams struct {
 	Langs     []string
 }
 
-func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) error {
-	_, err := q.db.ExecContext(ctx, createPost,
+func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, error) {
+	row := q.db.QueryRowContext(ctx, createPost,
 		arg.Did,
 		arg.Rkey,
 		arg.CreatedAt,
@@ -43,7 +44,17 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) error {
 		arg.Reply,
 		pq.Array(arg.Langs),
 	)
-	return err
+	var i Post
+	err := row.Scan(
+		&i.Did,
+		&i.Rkey,
+		&i.CreatedAt,
+		&i.Text,
+		&i.Reply,
+		pq.Array(&i.Langs),
+		&i.Likes,
+	)
+	return i, err
 }
 
 const likePost = `-- name: LikePost :one
@@ -55,8 +66,8 @@ returning did, rkey, created_at, text, reply, langs, likes
 `
 
 type LikePostParams struct {
-	Did string
-	Rkey      string
+	Did  string
+	Rkey string
 }
 
 func (q *Queries) LikePost(ctx context.Context, arg LikePostParams) (Post, error) {
