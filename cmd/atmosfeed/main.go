@@ -41,6 +41,7 @@ func main() {
   "questions": "out/local-questions-latest.scale",
   "german": "out/local-german-latest.scale"
 }`, "JSON map of feed names to Scale function/Wasm feed classifiers")
+	classifierTimeout := flag.Duration("classifier-timeout", time.Second, "Amount of time after which to stop a classifer Scale function from running")
 
 	flag.Parse()
 
@@ -131,6 +132,9 @@ func main() {
 
 				s := signature.New()
 				s.Context.Post = p
+
+				ctx, cancel := context.WithTimeout(context.Background(), *classifierTimeout)
+				defer cancel()
 
 				if err := classifier.Run(ctx, s); err != nil {
 					errs <- err
