@@ -6,11 +6,12 @@ DST ?=
 
 # Private variables
 obj = atmosfeed
-classifiers = alwaystrue
+signatures = classifier
+functions = alwaystrue
 all: build
 
 # Build
-build: $(addprefix build/,$(obj)) $(addprefix build-classifier/,$(classifiers))
+build: $(addprefix build/,$(obj)) $(addprefix build/function/,$(functions))
 $(addprefix build/,$(obj)):
 ifdef DST
 	go build -o $(DST) ./cmd/$(subst build/,,$@)
@@ -18,10 +19,10 @@ else
 	go build -o $(OUTPUT_DIR)/$(subst build/,,$@) ./cmd/$(subst build/,,$@)
 endif
 
-build-classifier: $(addprefix build-classifier/,$(classifiers))
-$(addprefix build-classifier/,$(classifiers)):
-	cd classifiers/$(subst build-classifier/,,$@) && scale function build # && scale signature generate $(subst build-classifier/,,$@):latest
-	scale function export local/$(subst build-classifier/,,$@):latest $(OUTPUT_DIR)
+build/function: $(addprefix build/function/,$(functions))
+$(addprefix build/function/,$(functions)):
+	scale function build -d ./pkg/functions/$(subst build/function/,,$@)
+	scale function export local/$(subst build/function/,,$@):latest $(OUTPUT_DIR)
 
 # Install
 install: $(addprefix install/,$(obj))
@@ -47,10 +48,17 @@ benchmark:
 
 # Clean
 clean:
-	rm -rf out pkg/models
+	rm -rf out pkg/models pkg/signatures
+
+depend/signature: $(addprefix depend/signature/,$(signatures))
+$(addprefix depend/signature/,$(signatures)):
+	scale signature generate $(subst depend/signature/,,$@):latest -d ./api/signatures/$(subst depend/signature/,,$@)
+	mkdir -p pkg/signatures/$(subst depend/signature/,,$@)/{guest,host}
+	scale signature export local/$(subst depend/signature/,,$@):latest go guest pkg/signatures/$(subst depend/signature/,,$@)/guest
+	scale signature export local/$(subst depend/signature/,,$@):latest go host pkg/signatures/$(subst depend/signature/,,$@)/host
 
 # Dependencies
-depend:
+depend: depend/signature
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 
 	go generate ./...

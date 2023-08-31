@@ -5,7 +5,7 @@ language = "go"
 
 signature {
   organization = "local"
-  name         = "alwaystrue"
+  name         = "classifier"
   tag          = "latest"
 }
 
