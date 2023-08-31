@@ -1,4 +1,3 @@
-
 package alwaystrue
 
 import (
@@ -6,5 +5,7 @@ import (
 )
 
 func Scale(ctx *signature.Context) (*signature.Context, error) {
+	ctx.MyString = "changed"
+
 	return signature.Next(ctx)
 }

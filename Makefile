@@ -6,16 +6,22 @@ DST ?=
 
 # Private variables
 obj = atmosfeed
-all: $(addprefix build/,$(obj))
+classifiers = alwaystrue
+all: build
 
 # Build
-build: $(addprefix build/,$(obj))
+build: $(addprefix build/,$(obj)) $(addprefix build-classifier/,$(classifiers))
 $(addprefix build/,$(obj)):
 ifdef DST
 	go build -o $(DST) ./cmd/$(subst build/,,$@)
 else
 	go build -o $(OUTPUT_DIR)/$(subst build/,,$@) ./cmd/$(subst build/,,$@)
 endif
+
+build-classifier: $(addprefix build-classifier/,$(classifiers))
+$(addprefix build-classifier/,$(classifiers)):
+	cd classifiers/$(subst build-classifier/,,$@) && scale function build # && scale signature generate $(subst build-classifier/,,$@):latest
+	scale function export local/$(subst build-classifier/,,$@):latest $(OUTPUT_DIR)
 
 # Install
 install: $(addprefix install/,$(obj))
