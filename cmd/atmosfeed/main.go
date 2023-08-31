@@ -7,10 +7,13 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"net/url"
 	"os"
 	"path"
+	"signature"
+	"sync"
 	"time"
 
 	"github.com/bluesky-social/indigo/api/atproto"
@@ -22,6 +25,8 @@ import (
 	"github.com/bluesky-social/indigo/repomgr"
 	iutil "github.com/bluesky-social/indigo/util"
 	"github.com/gorilla/websocket"
+	"github.com/loopholelabs/scale"
+	"github.com/loopholelabs/scale/scalefunc"
 	"github.com/pojntfx/atmosfeed/pkg/models"
 	"github.com/pojntfx/atmosfeed/pkg/persisters"
 )
@@ -30,11 +35,48 @@ func main() {
 	pdsURL := flag.String("pds-url", "wss://bsky.social/", "PDS URL (can also be set using `PDS_URL` env variable)")
 	postgresURL := flag.String("postgres-url", "postgresql://postgres@localhost:5432/atmosfeed?sslmode=disable", "PostgreSQL URL (can also be set using `POSTGRES_URL` env variable)")
 	verbose := flag.Bool("verbose", false, "Whether to enable verbose logging")
+	rawClassifiers := flag.String("classifiers", `{
+  "trending": "out/local-trending-latest.scale",
+  "everything": "out/local-everything-latest.scale",
+  "questions": "out/local-questions-latest.scale",
+  "german": "out/local-german-latest.scale"
+}`, "JSON map of feed names to Scale function/Wasm feed classifiers")
 
 	flag.Parse()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	var classifierSources map[string]string
+	if err := json.Unmarshal([]byte(*rawClassifiers), &classifierSources); err != nil {
+		panic(err)
+	}
+
+	classifiers := map[string]*scale.Instance[*signature.Signature]{}
+	for feed, classifierSource := range classifierSources {
+		b, err := os.ReadFile(classifierSource)
+		if err != nil {
+			panic(err)
+		}
+
+		fn := &scalefunc.Schema{}
+		if err := fn.Decode(b); err != nil {
+			panic(err)
+		}
+
+		runtime, err := scale.New(scale.NewConfig(signature.New).WithFunction(fn))
+		if err != nil {
+			panic(err)
+		}
+
+		instance, err := runtime.Instance()
+		if err != nil {
+			panic(err)
+		}
+		defer instance.Cleanup()
+
+		classifiers[feed] = instance
+	}
 
 	if v := os.Getenv("POSTGRES_URL"); v != "" {
 		log.Println("Using database address from POSTGRES_URL env variable")
@@ -64,8 +106,57 @@ func main() {
 
 	log.Println("Connected to PostgreSQL")
 
-	classify := func(post models.Post) bool {
-		return true
+	classify := func(post models.Post) error {
+		errs := make(chan error)
+
+		var wg sync.WaitGroup
+		for feed, classifier := range classifiers {
+			wg.Add(1)
+
+			go func(feed string, classifier *scale.Instance[*signature.Signature]) {
+				defer wg.Done()
+
+				p := signature.NewPost()
+
+				p.Did = post.Did
+				p.Rkey = post.Rkey
+				p.Text = post.Text
+
+				p.Langs = post.Langs
+
+				p.CreatedAt = post.CreatedAt.Unix()
+				p.Likes = int64(post.Likes)
+
+				p.Reply = post.Reply
+
+				s := signature.New()
+				s.Context.Post = p
+
+				if err := classifier.Run(ctx, s); err != nil {
+					errs <- err
+
+					return
+				}
+
+				if s.Context.Include {
+					fmt.Println(feed, post)
+				}
+			}(feed, classifier)
+		}
+
+		go func() {
+			wg.Wait()
+
+			close(errs)
+		}()
+
+		for err := range errs {
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
 	}
 
 	handlers := events.RepoStreamCallbacks{
@@ -133,8 +224,12 @@ func main() {
 							continue l
 						}
 
-						if *verbose && classify(post) {
-							log.Println(post)
+						if *verbose {
+							log.Println("Created", post)
+						}
+
+						if err := classify(post); err != nil {
+							panic(err)
 						}
 					} else if post.LexiconTypeID == "app.bsky.feed.like" {
 						var like bsky.FeedLike
@@ -164,8 +259,12 @@ func main() {
 							continue l
 						}
 
-						if *verbose && classify(post) {
-							log.Println(post)
+						if *verbose {
+							log.Println("Liked", post)
+						}
+
+						if err := classify(post); err != nil {
+							panic(err)
 						}
 					}
 				}
