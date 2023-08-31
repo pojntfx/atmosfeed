@@ -1,8 +1,42 @@
-
 version = "v1alpha"
 context = "context"
-model Context {
-  bool Include {
+
+model "Context" {
+  model "Post" {
+    reference = "Post"
+  }
+
+  bool "Include" {
     default = false
+  }
+}
+
+model "Post" {
+  string "Did" {
+    default = ""
+  }
+
+  string "Rkey" {
+    default = ""
+  }
+
+  int64 "CreatedAt" {
+    default = 0
+  }
+
+  string "Text" {
+    default = ""
+  }
+
+  bool "Reply" {
+    default = false
+  }
+
+  string_array "Langs" {
+    initial_size = 0
+  }
+
+  int64 "Likes" {
+    default = 0
   }
 }

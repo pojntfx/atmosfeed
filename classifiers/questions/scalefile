@@ -1,0 +1,14 @@
+version  = "v1alpha"
+name     = "questions"
+tag      = "latest"
+language = "go"
+
+signature {
+  organization = "local"
+  name         = "classifier"
+  tag          = "latest"
+}
+
+function    = "Scale"
+initialize  = ""
+description = ""

@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	classifier := flag.String("classifier", filepath.Join("out", "local-everything-latest.scale"), "Path to the classifier Scale function to use")
+	classifier := flag.String("classifier", filepath.Join("out", "local-trending-latest.scale"), "Path to the classifier Scale function to use")
 
 	flag.Parse()
 
@@ -41,8 +41,11 @@ func main() {
 		panic(err)
 	}
 
+	post := signature.NewPost()
+	post.Likes = 11
+
 	s := signature.New()
-	s.Context.Include = false
+	s.Context.Post = post
 
 	if err := i.Run(ctx, s); err != nil {
 		panic(err)

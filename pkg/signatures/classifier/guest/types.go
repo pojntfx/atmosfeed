@@ -14,11 +14,15 @@ var (
 )
 
 type Context struct {
+	Post *Post
+
 	Include bool
 }
 
 func NewContext() *Context {
 	return &Context{
+
+		Post: NewPost(),
 
 		Include: false,
 	}
@@ -29,6 +33,8 @@ func (x *Context) Encode(b *polyglot.Buffer) {
 	if x == nil {
 		e.Nil()
 	} else {
+
+		x.Post.Encode(b)
 
 		e.Bool(x.Include)
 
@@ -55,7 +61,130 @@ func _decodeContext(x *Context, d *polyglot.Decoder) (*Context, error) {
 		x = NewContext()
 	}
 
+	x.Post, err = _decodePost(nil, d)
+	if err != nil {
+		return nil, err
+	}
+
 	x.Include, err = d.Bool()
+	if err != nil {
+		return nil, err
+	}
+
+	return x, nil
+}
+
+type Post struct {
+	Did  string
+	Rkey string
+	Text string
+
+	Langs []string
+
+	CreatedAt int64
+	Likes     int64
+
+	Reply bool
+}
+
+func NewPost() *Post {
+	return &Post{
+
+		Did:  "",
+		Rkey: "",
+		Text: "",
+
+		Langs: make([]string, 0, 0),
+
+		CreatedAt: 0,
+		Likes:     0,
+
+		Reply: false,
+	}
+}
+
+func (x *Post) Encode(b *polyglot.Buffer) {
+	e := polyglot.Encoder(b)
+	if x == nil {
+		e.Nil()
+	} else {
+
+		e.String(x.Did)
+		e.String(x.Rkey)
+		e.String(x.Text)
+
+		e.Slice(uint32(len(x.Langs)), polyglot.StringKind)
+		for _, a := range x.Langs {
+			e.String(a)
+		}
+
+		e.Int64(x.CreatedAt)
+		e.Int64(x.Likes)
+
+		e.Bool(x.Reply)
+
+	}
+}
+
+func DecodePost(x *Post, b []byte) (*Post, error) {
+	d := polyglot.GetDecoder(b)
+	defer d.Return()
+	return _decodePost(x, d)
+}
+
+func _decodePost(x *Post, d *polyglot.Decoder) (*Post, error) {
+	if d.Nil() {
+		return nil, nil
+	}
+
+	err, _ := d.Error()
+	if err != nil {
+		return nil, err
+	}
+
+	if x == nil {
+		x = NewPost()
+	}
+
+	x.Did, err = d.String()
+	if err != nil {
+		return nil, err
+	}
+	x.Rkey, err = d.String()
+	if err != nil {
+		return nil, err
+	}
+	x.Text, err = d.String()
+	if err != nil {
+		return nil, err
+	}
+
+	sliceSizeLangs, err := d.Slice(polyglot.StringKind)
+	if err != nil {
+		return nil, err
+	}
+
+	if uint32(len(x.Langs)) != sliceSizeLangs {
+		x.Langs = make([]string, sliceSizeLangs)
+	}
+
+	for i := uint32(0); i < sliceSizeLangs; i++ {
+		x.Langs[i], err = d.String()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	x.CreatedAt, err = d.Int64()
+	if err != nil {
+		return nil, err
+	}
+	x.Likes, err = d.Int64()
+	if err != nil {
+		return nil, err
+	}
+
+	x.Reply, err = d.Bool()
 	if err != nil {
 		return nil, err
 	}
