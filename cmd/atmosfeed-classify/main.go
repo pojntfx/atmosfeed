@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	classifier := flag.String("classifier", filepath.Join("out", "local-alwaystrue-latest.scale"), "Path to the classifier Scale function to use")
+	classifier := flag.String("classifier", filepath.Join("out", "local-everything-latest.scale"), "Path to the classifier Scale function to use")
 
 	flag.Parse()
 
@@ -42,11 +42,11 @@ func main() {
 	}
 
 	s := signature.New()
-	s.Context.MyString = "Hey!"
+	s.Context.Include = false
 
 	if err := i.Run(ctx, s); err != nil {
 		panic(err)
 	}
 
-	fmt.Println(s.Context.MyString)
+	fmt.Println(s.Context.Include)
 }

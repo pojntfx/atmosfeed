@@ -14,13 +14,13 @@ var (
 )
 
 type Context struct {
-	MyString string
+	Include bool
 }
 
 func NewContext() *Context {
 	return &Context{
 
-		MyString: "DefaultValue",
+		Include: false,
 	}
 }
 
@@ -30,7 +30,7 @@ func (x *Context) Encode(b *polyglot.Buffer) {
 		e.Nil()
 	} else {
 
-		e.String(x.MyString)
+		e.Bool(x.Include)
 
 	}
 }
@@ -55,7 +55,7 @@ func _decodeContext(x *Context, d *polyglot.Decoder) (*Context, error) {
 		x = NewContext()
 	}
 
-	x.MyString, err = d.String()
+	x.Include, err = d.Bool()
 	if err != nil {
 		return nil, err
 	}

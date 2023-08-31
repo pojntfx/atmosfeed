@@ -4,6 +4,11 @@ set -e
 
 # Test
 if [ "$1" = "test" ]; then
+    # Install native dependencies
+    apt update
+    apt install -y curl
+    curl -fsSL https://dl.scale.sh | sh
+
     # Configure Git
     git config --global --add safe.directory '*'
 
@@ -21,6 +26,7 @@ if [ "$1" = "go" ]; then
     # Install native dependencies
     apt update
     apt install -y curl make
+    curl -fsSL https://dl.scale.sh | sh
 
     # Configure Git
     git config --global --add safe.directory '*'
