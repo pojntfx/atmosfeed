@@ -7,11 +7,15 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
+	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"signature"
+	"strings"
 	"sync"
 	"time"
 
@@ -37,13 +41,28 @@ const (
 	channelFeedDeleted  = "feed_deleted"
 
 	errPostgresForeignKeyViolation = "23503"
+
+	lexiconFeedPost = "app.bsky.feed.post"
 )
+
+var (
+	errMissingFeed    = errors.New("missing feed")
+	errInvalidFeedURI = errors.New("invalid feed URI")
+	errCouldNotEncode = errors.New("could not encode")
+)
+
+type feedPost struct {
+	Post string `json:"post"`
+}
 
 func main() {
 	pdsURL := flag.String("pds-url", "wss://bsky.social/", "PDS URL (can also be set using `PDS_URL` env variable)")
 	postgresURL := flag.String("postgres-url", "postgresql://postgres@localhost:5432/atmosfeed?sslmode=disable", "PostgreSQL URL (can also be set using `POSTGRES_URL` env variable)")
 	verbose := flag.Bool("verbose", false, "Whether to enable verbose logging")
+	laddr := flag.String("laddr", "localhost:1337", "Listen address")
 	classifierTimeout := flag.Duration("classifier-timeout", time.Second, "Amount of time after which to stop a classifer Scale function from running")
+	ttl := flag.Duration("ttl", time.Hour*6, "Maximum age of posts to return for a feed")
+	limit := flag.Int("limit", 100, "Maximum amount of posts to return for a feed")
 
 	flag.Parse()
 
@@ -159,6 +178,16 @@ func main() {
 	}()
 
 	log.Println("Connected to PostgreSQL")
+
+	lis, err := net.Listen("tcp", *laddr)
+	if err != nil {
+		panic(err)
+	}
+	defer lis.Close()
+
+	log.Println("Listening on", lis.Addr())
+
+	mux := http.NewServeMux()
 
 	classifierSources, err := persister.GetFeeds(ctx)
 	if err != nil {
@@ -303,7 +332,7 @@ func main() {
 						continue l
 					}
 
-					if post.LexiconTypeID == "app.bsky.feed.post" {
+					if post.LexiconTypeID == lexiconFeedPost {
 						createdAt, err := time.Parse(time.RFC3339Nano, post.CreatedAt)
 						if err != nil {
 							createdAt, err = time.Parse("2006-01-02T15:04:05.999999", post.CreatedAt) // For some reason, Bsky sometimes seems to not specify the timezone
@@ -394,6 +423,60 @@ func main() {
 			),
 		); err != nil {
 			errs <- err
+		}
+	}()
+
+	go func() {
+		mux.HandleFunc("/xrpc/app.bsky.feed.getFeedSkeleton", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			feed := r.URL.Query().Get("feed")
+			if strings.TrimSpace(feed) == "" {
+				http.Error(w, errMissingFeed.Error(), http.StatusUnprocessableEntity)
+
+				log.Println(errMissingFeed)
+
+				return
+			}
+
+			u, err := iutil.ParseAtUri(feed)
+			if err != nil {
+				http.Error(w, errInvalidFeedURI.Error(), http.StatusUnprocessableEntity)
+
+				log.Println(errInvalidFeedURI)
+
+				return
+			}
+
+			defer func() {
+				if err := recover(); err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+
+					log.Printf("Client disconnected with error: %v", err)
+				}
+			}()
+
+			rawFeedPosts, err := persister.GetFeedPosts(ctx, u.Rkey, time.Now().Add(-*ttl), int32(*limit))
+			if err != nil {
+				panic(err)
+			}
+
+			feedPosts := []feedPost{}
+			for _, rawFeedPost := range rawFeedPosts {
+				feedPosts = append(feedPosts, feedPost{
+					Post: fmt.Sprintf("at://%s/%s/%s", rawFeedPost.Did, lexiconFeedPost, rawFeedPost.Rkey),
+				})
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+
+			if err := json.NewEncoder(w).Encode(feedPosts); err != nil {
+				panic(fmt.Errorf("%w: %v", errCouldNotEncode, err))
+			}
+		}))
+
+		if err := http.Serve(lis, mux); err != nil {
+			errs <- err
+
+			return
 		}
 	}()
 

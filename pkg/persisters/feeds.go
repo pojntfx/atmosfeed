@@ -2,6 +2,7 @@ package persisters
 
 import (
 	"context"
+	"time"
 
 	"github.com/pojntfx/atmosfeed/pkg/models"
 )
@@ -47,5 +48,18 @@ func (p *Persister) CreateFeedPost(
 		FeedName: feedName,
 		PostDid:  postDid,
 		PostRkey: postKkey,
+	})
+}
+
+func (p *Persister) GetFeedPosts(
+	ctx context.Context,
+	feedName string,
+	ttl time.Time,
+	limit int32,
+) ([]models.GetFeedPostsRow, error) {
+	return p.queries.GetFeedPosts(ctx, models.GetFeedPostsParams{
+		FeedName:  feedName,
+		CreatedAt: ttl,
+		Limit:     limit,
 	})
 }

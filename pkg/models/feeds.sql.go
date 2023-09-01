@@ -7,6 +7,7 @@ package models
 
 import (
 	"context"
+	"time"
 )
 
 const createFeedPost = `-- name: CreateFeedPost :exec
@@ -50,6 +51,52 @@ func (q *Queries) GetFeedClassifier(ctx context.Context, name string) ([]byte, e
 	var classifier []byte
 	err := row.Scan(&classifier)
 	return classifier, err
+}
+
+const getFeedPosts = `-- name: GetFeedPosts :many
+select p.did,
+    p.rkey
+from posts p
+    join feed_posts fp on p.did = fp.post_did
+    and p.rkey = fp.post_rkey
+where fp.feed_name = $1
+    and p.created_at > $2
+order by p.created_at desc
+limit $3
+`
+
+type GetFeedPostsParams struct {
+	FeedName  string
+	CreatedAt time.Time
+	Limit     int32
+}
+
+type GetFeedPostsRow struct {
+	Did  string
+	Rkey string
+}
+
+func (q *Queries) GetFeedPosts(ctx context.Context, arg GetFeedPostsParams) ([]GetFeedPostsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getFeedPosts, arg.FeedName, arg.CreatedAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetFeedPostsRow
+	for rows.Next() {
+		var i GetFeedPostsRow
+		if err := rows.Scan(&i.Did, &i.Rkey); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getFeeds = `-- name: GetFeeds :many
