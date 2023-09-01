@@ -21,11 +21,17 @@ jobs:
             flags: ""
             cmd: go test ./...
             dst: out/*
-          - id: go
+          - id: atmosfeed-server
             src: .
             os: golang:bookworm
             flags: ""
-            cmd: ./Hydrunfile go atmosfeed
+            cmd: ./Hydrunfile go atmosfeed-server
+            dst: out/*
+          - id: atmosfeed-client
+            src: .
+            os: golang:bookworm
+            flags: ""
+            cmd: ./Hydrunfile go atmosfeed-client
             dst: out/*
 
     steps:
