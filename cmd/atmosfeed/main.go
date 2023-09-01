@@ -35,49 +35,12 @@ func main() {
 	pdsURL := flag.String("pds-url", "wss://bsky.social/", "PDS URL (can also be set using `PDS_URL` env variable)")
 	postgresURL := flag.String("postgres-url", "postgresql://postgres@localhost:5432/atmosfeed?sslmode=disable", "PostgreSQL URL (can also be set using `POSTGRES_URL` env variable)")
 	verbose := flag.Bool("verbose", false, "Whether to enable verbose logging")
-	rawClassifiers := flag.String("classifiers", `{
-  "trending": "out/local-trending-latest.scale",
-  "everything": "out/local-everything-latest.scale",
-  "questions": "out/local-questions-latest.scale",
-  "german": "out/local-german-latest.scale"
-}`, "JSON map of feed names to Scale function/Wasm feed classifiers")
 	classifierTimeout := flag.Duration("classifier-timeout", time.Second, "Amount of time after which to stop a classifer Scale function from running")
 
 	flag.Parse()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	var classifierSources map[string]string
-	if err := json.Unmarshal([]byte(*rawClassifiers), &classifierSources); err != nil {
-		panic(err)
-	}
-
-	classifiers := map[string]*scale.Instance[*signature.Signature]{}
-	for feed, classifierSource := range classifierSources {
-		b, err := os.ReadFile(classifierSource)
-		if err != nil {
-			panic(err)
-		}
-
-		fn := &scalefunc.Schema{}
-		if err := fn.Decode(b); err != nil {
-			panic(err)
-		}
-
-		runtime, err := scale.New(scale.NewConfig(signature.New).WithFunction(fn))
-		if err != nil {
-			panic(err)
-		}
-
-		instance, err := runtime.Instance()
-		if err != nil {
-			panic(err)
-		}
-		defer instance.Cleanup()
-
-		classifiers[feed] = instance
-	}
 
 	if v := os.Getenv("POSTGRES_URL"); v != "" {
 		log.Println("Using database address from POSTGRES_URL env variable")
@@ -106,6 +69,34 @@ func main() {
 	}
 
 	log.Println("Connected to PostgreSQL")
+
+	classifierSources, err := p.GetFeeds(ctx)
+	if err != nil {
+		panic(err)
+	}
+
+	classifiers := map[string]*scale.Instance[*signature.Signature]{}
+	for _, classifierSource := range classifierSources {
+		fn := &scalefunc.Schema{}
+		if err := fn.Decode(classifierSource.Classifier); err != nil {
+			panic(err)
+		}
+
+		runtime, err := scale.New(scale.NewConfig(signature.New).WithFunction(fn))
+		if err != nil {
+			panic(err)
+		}
+
+		instance, err := runtime.Instance()
+		if err != nil {
+			panic(err)
+		}
+		defer instance.Cleanup()
+
+		classifiers[classifierSource.Name] = instance
+	}
+
+	log.Println("Fetched classifiers")
 
 	classify := func(post models.Post) error {
 		errs := make(chan error)

@@ -8,6 +8,17 @@ import (
 	"time"
 )
 
+type Feed struct {
+	Name       string
+	Classifier []byte
+}
+
+type FeedPost struct {
+	FeedName string
+	PostDid  string
+	PostRkey string
+}
+
 type Post struct {
 	Did       string
 	Rkey      string
