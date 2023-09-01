@@ -51,8 +51,25 @@ var (
 	errCouldNotEncode = errors.New("could not encode")
 )
 
+type feed struct {
+	Feed   []feedPost `json:"feed"`
+	Cursor string     `json:"cursor"`
+}
+
 type feedPost struct {
 	Post string `json:"post"`
+}
+
+type didDocument struct {
+	Context []string  `json:"@context"`
+	ID      string    `json:"id"`
+	Service []service `json:"service"`
+}
+
+type service struct {
+	ID              string `json:"id"`
+	Type            string `json:"type"`
+	ServiceEndpoint string `json:"serviceEndpoint"`
 }
 
 func main() {
@@ -63,6 +80,8 @@ func main() {
 	classifierTimeout := flag.Duration("classifier-timeout", time.Second, "Amount of time after which to stop a classifer Scale function from running")
 	ttl := flag.Duration("ttl", time.Hour*6, "Maximum age of posts to return for a feed")
 	limit := flag.Int("limit", 100, "Maximum amount of posts to return for a feed")
+	did := flag.String("did", "did:web:atmosfeed-feeds.serveo.net", "DID to publish the feed generator under")
+	serviceEndpoint := flag.String("service-endpoint", "https://atmosfeed-feeds.serveo.net", "Publicly reachable endpoint for the feed generator")
 
 	flag.Parse()
 
@@ -428,8 +447,8 @@ func main() {
 
 	go func() {
 		mux.HandleFunc("/xrpc/app.bsky.feed.getFeedSkeleton", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			feed := r.URL.Query().Get("feed")
-			if strings.TrimSpace(feed) == "" {
+			feedURL := r.URL.Query().Get("feed")
+			if strings.TrimSpace(feedURL) == "" {
 				http.Error(w, errMissingFeed.Error(), http.StatusUnprocessableEntity)
 
 				log.Println(errMissingFeed)
@@ -437,7 +456,7 @@ func main() {
 				return
 			}
 
-			u, err := iutil.ParseAtUri(feed)
+			u, err := iutil.ParseAtUri(feedURL)
 			if err != nil {
 				http.Error(w, errInvalidFeedURI.Error(), http.StatusUnprocessableEntity)
 
@@ -459,16 +478,46 @@ func main() {
 				panic(err)
 			}
 
-			feedPosts := []feedPost{}
+			feedResponse := feed{
+				Feed: []feedPost{},
+			}
 			for _, rawFeedPost := range rawFeedPosts {
-				feedPosts = append(feedPosts, feedPost{
+				feedResponse.Feed = append(feedResponse.Feed, feedPost{
 					Post: fmt.Sprintf("at://%s/%s/%s", rawFeedPost.Did, lexiconFeedPost, rawFeedPost.Rkey),
 				})
 			}
 
 			w.Header().Set("Content-Type", "application/json")
 
-			if err := json.NewEncoder(w).Encode(feedPosts); err != nil {
+			if err := json.NewEncoder(w).Encode(feedResponse); err != nil {
+				panic(fmt.Errorf("%w: %v", errCouldNotEncode, err))
+			}
+		}))
+
+		mux.HandleFunc("/.well-known/did.json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer func() {
+				if err := recover(); err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+
+					log.Printf("Client disconnected with error: %v", err)
+				}
+			}()
+
+			didResponse := didDocument{
+				Context: []string{"https://www.w3.org/ns/did/v1"},
+				ID:      *did,
+				Service: []service{
+					{
+						ID:              "#bsky_fg",
+						Type:            "BskyFeedGenerator",
+						ServiceEndpoint: *serviceEndpoint,
+					},
+				},
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+
+			if err := json.NewEncoder(w).Encode(didResponse); err != nil {
 				panic(fmt.Errorf("%w: %v", errCouldNotEncode, err))
 			}
 		}))
