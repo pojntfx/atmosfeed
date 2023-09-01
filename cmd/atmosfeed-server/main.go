@@ -120,17 +120,23 @@ func main() {
 
 					fn := &scalefunc.Schema{}
 					if err := fn.Decode(classifierSource); err != nil {
-						panic(err)
+						log.Println("Could not parse classifier, skipping:", err)
+
+						return
 					}
 
 					runtime, err := scale.New(scale.NewConfig(signature.New).WithFunction(fn))
 					if err != nil {
-						panic(err)
+						log.Println("Could not start classifier runtime, skipping:", err)
+
+						return
 					}
 
 					instance, err := runtime.Instance()
 					if err != nil {
-						panic(err)
+						log.Println("Could not start classifier instance, skipping:", err)
+
+						return
 					}
 					defer instance.Cleanup()
 
@@ -166,17 +172,23 @@ func main() {
 
 			fn := &scalefunc.Schema{}
 			if err := fn.Decode(classifierSource.Classifier); err != nil {
-				panic(err)
+				log.Println("Could not parse classifier, skipping:", err)
+
+				return
 			}
 
 			runtime, err := scale.New(scale.NewConfig(signature.New).WithFunction(fn))
 			if err != nil {
-				panic(err)
+				log.Println("Could not start classifier runtime, skipping:", err)
+
+				return
 			}
 
 			instance, err := runtime.Instance()
 			if err != nil {
-				panic(err)
+				log.Println("Could not start classifier instance, skipping:", err)
+
+				return
 			}
 			defer instance.Cleanup()
 
@@ -323,7 +335,9 @@ func main() {
 						}
 
 						if err := classify(post); err != nil {
-							panic(err)
+							log.Println("Could not classify post, skipping:", err)
+
+							continue l
 						}
 					} else if post.LexiconTypeID == "app.bsky.feed.like" {
 						var like bsky.FeedLike
@@ -358,7 +372,7 @@ func main() {
 						}
 
 						if err := classify(post); err != nil {
-							panic(err)
+							return err
 						}
 					}
 				}
@@ -368,14 +382,26 @@ func main() {
 		},
 	}
 
-	if err := events.HandleRepoStream(
-		ctx,
-		conn,
-		sequential.NewScheduler(
-			conn.RemoteAddr().String(),
-			handlers.EventHandler,
-		),
-	); err != nil {
+	errs := make(chan error)
+
+	go func() {
+		if err := events.HandleRepoStream(
+			ctx,
+			conn,
+			sequential.NewScheduler(
+				conn.RemoteAddr().String(),
+				handlers.EventHandler,
+			),
+		); err != nil {
+			errs <- err
+		}
+	}()
+
+	for err := range errs {
+		if err == nil {
+			return
+		}
+
 		panic(err)
 	}
 }
