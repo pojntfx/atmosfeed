@@ -36,3 +36,16 @@ func (p *Persister) DeleteFeed(
 ) error {
 	return p.queries.DeleteFeed(ctx, name)
 }
+
+func (p *Persister) CreateFeedPost(
+	ctx context.Context,
+	feedName string,
+	postDid string,
+	postKkey string,
+) error {
+	return p.queries.CreateFeedPost(ctx, models.CreateFeedPostParams{
+		FeedName: feedName,
+		PostDid:  postDid,
+		PostRkey: postKkey,
+	})
+}

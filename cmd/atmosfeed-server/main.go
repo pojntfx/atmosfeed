@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"fmt"
 	"log"
 	"net/url"
 	"os"
@@ -36,6 +35,8 @@ const (
 	channelFeedInserted = "feed_inserted"
 	channelFeedUpdated  = "feed_updated"
 	channelFeedDeleted  = "feed_deleted"
+
+	errPostgresForeignKeyViolation = "23503"
 )
 
 func main() {
@@ -69,9 +70,9 @@ func main() {
 
 	log.Println("Connected to PDS", *pdsURL)
 
-	p := persisters.NewPersister(*postgresURL)
+	persister := persisters.NewPersister(*postgresURL)
 
-	if err := p.Init(); err != nil {
+	if err := persister.Init(); err != nil {
 		panic(err)
 	}
 
@@ -107,7 +108,7 @@ func main() {
 				}
 
 				func() {
-					classifierSource, err := p.GetFeedClassifier(ctx, notification.Extra)
+					classifierSource, err := persister.GetFeedClassifier(ctx, notification.Extra)
 					if err != nil {
 						log.Println("Could not fetch new classifier, skipping:", err)
 
@@ -153,7 +154,7 @@ func main() {
 
 	log.Println("Connected to PostgreSQL")
 
-	classifierSources, err := p.GetFeeds(ctx)
+	classifierSources, err := persister.GetFeeds(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -196,7 +197,7 @@ func main() {
 		for feed, classifier := range classifiers {
 			wg.Add(1)
 
-			go func(feed string, classifier *scale.Instance[*signature.Signature]) {
+			go func(feedName string, classifier *scale.Instance[*signature.Signature]) {
 				defer wg.Done()
 
 				p := signature.NewPost()
@@ -225,7 +226,14 @@ func main() {
 				}
 
 				if s.Context.Include {
-					fmt.Println(feed, post)
+					if err := persister.CreateFeedPost(ctx, feedName, p.Did, p.Rkey); err != nil {
+						// We can safely ignore inserts if the feed that it should be inserted in was deleted
+						if err, ok := err.(*pq.Error); !ok || err.Code != pq.ErrorCode(errPostgresForeignKeyViolation) {
+							errs <- err
+						}
+
+						return
+					}
 				}
 			}(feed, classifier)
 		}
@@ -295,7 +303,7 @@ func main() {
 							}
 						}
 
-						post, err := p.CreatePost(
+						post, err := persister.CreatePost(
 							ctx,
 							rp.RepoDid(),
 							path.Base(op.Path),
@@ -332,7 +340,7 @@ func main() {
 							continue l
 						}
 
-						post, err := p.LikePost(
+						post, err := persister.LikePost(
 							ctx,
 							u.Did,
 							u.Rkey,

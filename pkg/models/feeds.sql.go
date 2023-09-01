@@ -9,6 +9,26 @@ import (
 	"context"
 )
 
+const createFeedPost = `-- name: CreateFeedPost :exec
+insert into feed_posts (
+        feed_name,
+        post_did,
+        post_rkey
+    )
+values ($1, $2, $3)
+`
+
+type CreateFeedPostParams struct {
+	FeedName string
+	PostDid  string
+	PostRkey string
+}
+
+func (q *Queries) CreateFeedPost(ctx context.Context, arg CreateFeedPostParams) error {
+	_, err := q.db.ExecContext(ctx, createFeedPost, arg.FeedName, arg.PostDid, arg.PostRkey)
+	return err
+}
+
 const deleteFeed = `-- name: DeleteFeed :exec
 delete from feeds
 where name = $1

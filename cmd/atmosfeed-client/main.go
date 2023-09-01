@@ -26,16 +26,16 @@ func main() {
 		*postgresURL = v
 	}
 
-	p := persisters.NewPersister(*postgresURL)
+	persister := persisters.NewPersister(*postgresURL)
 
-	if err := p.Init(); err != nil {
+	if err := persister.Init(); err != nil {
 		panic(err)
 	}
 
 	log.Println("Connected to PostgreSQL")
 
 	if *delete {
-		if err := p.DeleteFeed(ctx, *name); err != nil {
+		if err := persister.DeleteFeed(ctx, *name); err != nil {
 			panic(err)
 		}
 	} else {
@@ -44,7 +44,7 @@ func main() {
 			panic(err)
 		}
 
-		if err := p.UpsertFeed(ctx, *name, b); err != nil {
+		if err := persister.UpsertFeed(ctx, *name, b); err != nil {
 			panic(err)
 		}
 	}
