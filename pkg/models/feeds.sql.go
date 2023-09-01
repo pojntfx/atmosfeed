@@ -9,6 +9,29 @@ import (
 	"context"
 )
 
+const deleteFeed = `-- name: DeleteFeed :exec
+delete from feeds
+where name = $1
+`
+
+func (q *Queries) DeleteFeed(ctx context.Context, name string) error {
+	_, err := q.db.ExecContext(ctx, deleteFeed, name)
+	return err
+}
+
+const getFeedClassifier = `-- name: GetFeedClassifier :one
+select classifier
+from feeds
+where name = $1
+`
+
+func (q *Queries) GetFeedClassifier(ctx context.Context, name string) ([]byte, error) {
+	row := q.db.QueryRowContext(ctx, getFeedClassifier, name)
+	var classifier []byte
+	err := row.Scan(&classifier)
+	return classifier, err
+}
+
 const getFeeds = `-- name: GetFeeds :many
 select name, classifier
 from feeds

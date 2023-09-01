@@ -25,10 +25,17 @@ import (
 	"github.com/bluesky-social/indigo/repomgr"
 	iutil "github.com/bluesky-social/indigo/util"
 	"github.com/gorilla/websocket"
+	"github.com/lib/pq"
 	"github.com/loopholelabs/scale"
 	"github.com/loopholelabs/scale/scalefunc"
 	"github.com/pojntfx/atmosfeed/pkg/models"
 	"github.com/pojntfx/atmosfeed/pkg/persisters"
+)
+
+const (
+	channelFeedInserted = "feed_inserted"
+	channelFeedUpdated  = "feed_updated"
+	channelFeedDeleted  = "feed_deleted"
 )
 
 func main() {
@@ -68,6 +75,82 @@ func main() {
 		panic(err)
 	}
 
+	var classifierLock sync.Mutex
+	classifiers := map[string]*scale.Instance[*signature.Signature]{}
+
+	listener := pq.NewListener(*postgresURL, 10*time.Second, time.Minute, nil)
+	if err := listener.Listen(channelFeedInserted); err != nil {
+		panic(err)
+	}
+
+	if err := listener.Listen(channelFeedUpdated); err != nil {
+		panic(err)
+	}
+
+	if err := listener.Listen(channelFeedDeleted); err != nil {
+		panic(err)
+	}
+
+	go func() {
+		for notification := range listener.Notify {
+			switch notification.Channel {
+			case channelFeedInserted:
+				if *verbose {
+					log.Println("Created feed", notification.Extra)
+				}
+
+				fallthrough
+
+			case channelFeedUpdated:
+				if *verbose {
+					log.Println("Updated feed", notification.Extra)
+				}
+
+				func() {
+					classifierSource, err := p.GetFeedClassifier(ctx, notification.Extra)
+					if err != nil {
+						log.Println("Could not fetch new classifier, skipping:", err)
+
+						return
+					}
+
+					classifierLock.Lock()
+					defer classifierLock.Unlock()
+
+					fn := &scalefunc.Schema{}
+					if err := fn.Decode(classifierSource); err != nil {
+						panic(err)
+					}
+
+					runtime, err := scale.New(scale.NewConfig(signature.New).WithFunction(fn))
+					if err != nil {
+						panic(err)
+					}
+
+					instance, err := runtime.Instance()
+					if err != nil {
+						panic(err)
+					}
+					defer instance.Cleanup()
+
+					classifiers[notification.Extra] = instance
+				}()
+
+			case channelFeedDeleted:
+				if *verbose {
+					log.Println("Deleted feed", notification.Extra)
+				}
+
+				func() {
+					classifierLock.Lock()
+					defer classifierLock.Unlock()
+
+					delete(classifiers, notification.Extra)
+				}()
+			}
+		}
+	}()
+
 	log.Println("Connected to PostgreSQL")
 
 	classifierSources, err := p.GetFeeds(ctx)
@@ -75,31 +158,39 @@ func main() {
 		panic(err)
 	}
 
-	classifiers := map[string]*scale.Instance[*signature.Signature]{}
 	for _, classifierSource := range classifierSources {
-		fn := &scalefunc.Schema{}
-		if err := fn.Decode(classifierSource.Classifier); err != nil {
-			panic(err)
-		}
+		func() {
+			classifierLock.Lock()
+			defer classifierLock.Unlock()
 
-		runtime, err := scale.New(scale.NewConfig(signature.New).WithFunction(fn))
-		if err != nil {
-			panic(err)
-		}
+			fn := &scalefunc.Schema{}
+			if err := fn.Decode(classifierSource.Classifier); err != nil {
+				panic(err)
+			}
 
-		instance, err := runtime.Instance()
-		if err != nil {
-			panic(err)
-		}
-		defer instance.Cleanup()
+			runtime, err := scale.New(scale.NewConfig(signature.New).WithFunction(fn))
+			if err != nil {
+				panic(err)
+			}
 
-		classifiers[classifierSource.Name] = instance
+			instance, err := runtime.Instance()
+			if err != nil {
+				panic(err)
+			}
+			defer instance.Cleanup()
+
+			classifiers[classifierSource.Name] = instance
+		}()
 	}
 
 	log.Println("Fetched classifiers")
 
 	classify := func(post models.Post) error {
+
 		errs := make(chan error)
+
+		classifierLock.Lock()
+		defer classifierLock.Unlock()
 
 		var wg sync.WaitGroup
 		for feed, classifier := range classifiers {
@@ -220,7 +311,7 @@ func main() {
 						}
 
 						if *verbose {
-							log.Println("Created", post)
+							log.Println("Created post", post)
 						}
 
 						if err := classify(post); err != nil {
@@ -255,7 +346,7 @@ func main() {
 						}
 
 						if *verbose {
-							log.Println("Liked", post)
+							log.Println("Liked post", post)
 						}
 
 						if err := classify(post); err != nil {

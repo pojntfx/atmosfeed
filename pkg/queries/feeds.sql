@@ -6,3 +6,10 @@ set classifier = excluded.classifier;
 -- name: GetFeeds :many
 select *
 from feeds;
+-- name: GetFeedClassifier :one
+select classifier
+from feeds
+where name = $1;
+-- name: DeleteFeed :exec
+delete from feeds
+where name = $1;
