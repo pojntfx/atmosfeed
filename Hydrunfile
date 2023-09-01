@@ -9,6 +9,11 @@ if [ "$1" = "test" ]; then
     apt install -y curl
     curl -fsSL https://dl.scale.sh | sh
 
+    curl -L -o /tmp/tinygo.tar.gz https://github.com/tinygo-org/tinygo/releases/download/v0.29.0/tinygo0.29.0.linux-amd64.tar.gz
+    mkdir -p /opt
+    tar xvzf /tmp/tinygo.tar.gz -C /opt
+    export PATH=$PATH:/opt/tinygo/bin
+
     # Configure Git
     git config --global --add safe.directory '*'
 
@@ -27,6 +32,11 @@ if [ "$1" = "go" ]; then
     apt update
     apt install -y curl make
     curl -fsSL https://dl.scale.sh | sh
+
+    curl -L -o /tmp/tinygo.tar.gz https://github.com/tinygo-org/tinygo/releases/download/v0.29.0/tinygo0.29.0.linux-amd64.tar.gz
+    mkdir -p /opt
+    tar xvzf /tmp/tinygo.tar.gz -C /opt
+    export PATH=$PATH:/opt/tinygo/bin
 
     # Configure Git
     git config --global --add safe.directory '*'
