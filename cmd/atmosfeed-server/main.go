@@ -15,6 +15,7 @@ import (
 	"os"
 	"path"
 	"signature"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -46,8 +47,10 @@ const (
 )
 
 var (
-	errMissingFeed    = errors.New("missing feed")
+	errMissingFeedURI = errors.New("missing feed URI")
 	errInvalidFeedURI = errors.New("invalid feed URI")
+	errInvalidLimit   = errors.New("invalid limit")
+	errLimitTooHigh   = errors.New("limit too high")
 	errCouldNotEncode = errors.New("could not encode")
 )
 
@@ -449,9 +452,9 @@ func main() {
 		mux.HandleFunc("/xrpc/app.bsky.feed.getFeedSkeleton", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			feedURL := r.URL.Query().Get("feed")
 			if strings.TrimSpace(feedURL) == "" {
-				http.Error(w, errMissingFeed.Error(), http.StatusUnprocessableEntity)
+				http.Error(w, errMissingFeedURI.Error(), http.StatusUnprocessableEntity)
 
-				log.Println(errMissingFeed)
+				log.Println(errMissingFeedURI)
 
 				return
 			}
@@ -465,6 +468,24 @@ func main() {
 				return
 			}
 
+			rawFeedLimit := r.URL.Query().Get("limit")
+			feedLimit, err := strconv.Atoi(rawFeedLimit)
+			if err != nil {
+				http.Error(w, errInvalidLimit.Error(), http.StatusUnprocessableEntity)
+
+				log.Println(errInvalidLimit)
+
+				return
+			}
+
+			if feedLimit > *limit {
+				http.Error(w, errLimitTooHigh.Error(), http.StatusUnprocessableEntity)
+
+				log.Println(errLimitTooHigh)
+
+				return
+			}
+
 			defer func() {
 				if err := recover(); err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
@@ -473,7 +494,7 @@ func main() {
 				}
 			}()
 
-			rawFeedPosts, err := persister.GetFeedPosts(ctx, u.Rkey, time.Now().Add(-*ttl), int32(*limit))
+			rawFeedPosts, err := persister.GetFeedPosts(ctx, u.Rkey, time.Now().Add(-*ttl), int32(feedLimit))
 			if err != nil {
 				panic(err)
 			}
