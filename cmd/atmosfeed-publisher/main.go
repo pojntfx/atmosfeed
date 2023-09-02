@@ -21,11 +21,13 @@ func main() {
 	username := flag.String("username", "example.bsky.social", "Bluesky username to login with")
 	password := flag.String("password", "", "Bluesky password to login with, preferably an app password (get one from https://bsky.app/settings/app-passwords)")
 
-	feedGeneratorDID := flag.String("feed-generator-did", "did:web:atmosfeed-feeds.serveo.net", "DID of the feed generator (typically the hostname of the publicly reachable URL)")
+	feedGeneratorDID := flag.String("feed-generator-did", "did:web:atmosfeed-feeds.serveo.net", "DID of the feed generator (typically the hostname of the publicly reachable URL) (ignored for `--delete`)")
 
 	feedRkey := flag.String("feed-rkey", "trending", "Machine-readable key for the feed")
-	feedName := flag.String("feed-name", "Atmosfeed Trending", "Human-readable name for the feed")
-	feedDescription := flag.String("feed-description", "An example trending feed for Atmosfeed", "Description for the feed")
+	feedName := flag.String("feed-name", "Atmosfeed Trending", "Human-readable name for the feed (ignored for `--delete`)")
+	feedDescription := flag.String("feed-description", "An example trending feed for Atmosfeed", "Description for the feed (ignored for `--delete`)")
+
+	delete := flag.Bool("delete", false, "Whether to delete instead of upsert a feed/classifier")
 
 	flag.Parse()
 
@@ -53,32 +55,44 @@ func main() {
 	auth.Handle = session.Handle
 	auth.Did = session.Did
 
-	rec := &util.LexiconTypeDecoder{&bsky.FeedGenerator{
-		CreatedAt:   time.Now().Format(time.RFC3339),
-		Description: feedDescription,
-		Did:         *feedGeneratorDID,
-		DisplayName: *feedName,
-	}}
+	rec := &util.LexiconTypeDecoder{
+		Val: &bsky.FeedGenerator{
+			CreatedAt:   time.Now().Format(time.RFC3339),
+			Description: feedDescription,
+			Did:         *feedGeneratorDID,
+			DisplayName: *feedName,
+		},
+	}
 
-	ex, err := atproto.RepoGetRecord(ctx, client, "", lexiconFeedGenerator, auth.Did, *feedRkey)
-	if err == nil {
-		if _, err := atproto.RepoPutRecord(ctx, client, &atproto.RepoPutRecord_Input{
+	if *delete {
+		if err := atproto.RepoDeleteRecord(ctx, client, &atproto.RepoDeleteRecord_Input{
 			Collection: lexiconFeedGenerator,
 			Repo:       auth.Did,
 			Rkey:       *feedRkey,
-			Record:     rec,
-			SwapRecord: ex.Cid,
 		}); err != nil {
 			panic(err)
 		}
 	} else {
-		if _, err := atproto.RepoCreateRecord(ctx, client, &atproto.RepoCreateRecord_Input{
-			Collection: lexiconFeedGenerator,
-			Repo:       auth.Did,
-			Rkey:       feedRkey,
-			Record:     rec,
-		}); err != nil {
-			panic(err)
+		ex, err := atproto.RepoGetRecord(ctx, client, "", lexiconFeedGenerator, auth.Did, *feedRkey)
+		if err == nil {
+			if _, err := atproto.RepoPutRecord(ctx, client, &atproto.RepoPutRecord_Input{
+				Collection: lexiconFeedGenerator,
+				Repo:       auth.Did,
+				Rkey:       *feedRkey,
+				Record:     rec,
+				SwapRecord: ex.Cid,
+			}); err != nil {
+				panic(err)
+			}
+		} else {
+			if _, err := atproto.RepoCreateRecord(ctx, client, &atproto.RepoCreateRecord_Input{
+				Collection: lexiconFeedGenerator,
+				Repo:       auth.Did,
+				Rkey:       feedRkey,
+				Record:     rec,
+			}); err != nil {
+				panic(err)
+			}
 		}
 	}
 }
