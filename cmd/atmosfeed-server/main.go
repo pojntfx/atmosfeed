@@ -77,15 +77,19 @@ type service struct {
 }
 
 func main() {
-	pdsURL := flag.String("pds-url", "wss://bsky.social/", "PDS URL (can also be set using `PDS_URL` env variable)")
+	pdsURL := flag.String("pds-url", "https://bsky.social/", "PDS URL (can also be set using `PDS_URL` env variable)")
+
 	postgresURL := flag.String("postgres-url", "postgresql://postgres@localhost:5432/atmosfeed?sslmode=disable", "PostgreSQL URL (can also be set using `POSTGRES_URL` env variable)")
-	verbose := flag.Bool("verbose", false, "Whether to enable verbose logging")
 	laddr := flag.String("laddr", "localhost:1337", "Listen address")
+
 	classifierTimeout := flag.Duration("classifier-timeout", time.Second, "Amount of time after which to stop a classifer Scale function from running")
 	ttl := flag.Duration("ttl", time.Hour*6, "Maximum age of posts to return for a feed")
 	limit := flag.Int("limit", 100, "Maximum amount of posts to return for a feed")
-	did := flag.String("did", "did:web:atmosfeed-feeds.serveo.net", "DID to publish the feed generator under")
-	serviceEndpoint := flag.String("service-endpoint", "https://atmosfeed-feeds.serveo.net", "Publicly reachable endpoint for the feed generator")
+
+	feedGeneratorDID := flag.String("feed-generator-did", "did:web:atmosfeed-feeds.serveo.net", "DID of the feed generator (typically the hostname of the publicly reachable URL)")
+	feedGeneratorURL := flag.String("feed-generator-url", "https://atmosfeed-feeds.serveo.net", "Publicly reachable URL of the feed generator")
+
+	verbose := flag.Bool("verbose", false, "Whether to enable verbose logging")
 
 	flag.Parse()
 
@@ -102,6 +106,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	pu.Scheme = "wss"
 	pu = pu.JoinPath("xrpc", "com.atproto.sync.subscribeRepos")
 
 	conn, _, err := websocket.DefaultDialer.DialContext(ctx, pu.String(), nil)
@@ -565,12 +570,12 @@ func main() {
 
 			res := didDocument{
 				Context: []string{"https://www.w3.org/ns/did/v1"},
-				ID:      *did,
+				ID:      *feedGeneratorDID,
 				Service: []service{
 					{
 						ID:              "#bsky_fg",
 						Type:            "BskyFeedGenerator",
-						ServiceEndpoint: *serviceEndpoint,
+						ServiceEndpoint: *feedGeneratorURL,
 					},
 				},
 			}

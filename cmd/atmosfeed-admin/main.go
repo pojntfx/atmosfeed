@@ -11,9 +11,11 @@ import (
 
 func main() {
 	postgresURL := flag.String("postgres-url", "postgresql://postgres@localhost:5432/atmosfeed?sslmode=disable", "PostgreSQL URL (can also be set using `POSTGRES_URL` env variable)")
-	name := flag.String("name", "trending", "Name of the feed")
-	classifier := flag.String("classifier", "out/local-trending-latest.scale", "Path to the classifier to upload (ignored for `--delete`)")
-	delete := flag.Bool("delete", false, "Whether to delete instead of upsert a classifier")
+
+	feedRkey := flag.String("feed-rkey", "trending", "Machine-readable key for the feed")
+	feedClassifier := flag.String("feed-classifier", "out/local-trending-latest.scale", "Path to the feed classifier to upload (ignored for `--delete`)")
+
+	delete := flag.Bool("delete", false, "Whether to delete instead of upsert a feed/classifier")
 
 	flag.Parse()
 
@@ -35,16 +37,16 @@ func main() {
 	log.Println("Connected to PostgreSQL")
 
 	if *delete {
-		if err := persister.DeleteFeed(ctx, *name); err != nil {
+		if err := persister.DeleteFeed(ctx, *feedRkey); err != nil {
 			panic(err)
 		}
 	} else {
-		b, err := os.ReadFile(*classifier)
+		b, err := os.ReadFile(*feedClassifier)
 		if err != nil {
 			panic(err)
 		}
 
-		if err := persister.UpsertFeed(ctx, *name, b); err != nil {
+		if err := persister.UpsertFeed(ctx, *feedRkey, b); err != nil {
 			panic(err)
 		}
 	}

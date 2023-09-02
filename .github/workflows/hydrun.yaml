@@ -27,11 +27,17 @@ jobs:
             flags: ""
             cmd: ./Hydrunfile go atmosfeed-server
             dst: out/*
-          - id: atmosfeed-client
+          - id: atmosfeed-admin
             src: .
             os: golang:bookworm
             flags: ""
-            cmd: ./Hydrunfile go atmosfeed-client
+            cmd: ./Hydrunfile go atmosfeed-admin
+            dst: out/*
+          - id: atmosfeed-publisher
+            src: .
+            os: golang:bookworm
+            flags: ""
+            cmd: ./Hydrunfile go atmosfeed-publisher
             dst: out/*
 
     steps:
