@@ -47,11 +47,12 @@ const (
 )
 
 var (
-	errMissingFeedURI = errors.New("missing feed URI")
-	errInvalidFeedURI = errors.New("invalid feed URI")
-	errInvalidLimit   = errors.New("invalid limit")
-	errLimitTooHigh   = errors.New("limit too high")
-	errCouldNotEncode = errors.New("could not encode")
+	errMissingFeedURI    = errors.New("missing feed URI")
+	errInvalidFeedURI    = errors.New("invalid feed URI")
+	errInvalidLimit      = errors.New("invalid limit")
+	errLimitTooHigh      = errors.New("limit too high")
+	errInvalidFeedCursor = errors.New("invalid feed cursor")
+	errCouldNotEncode    = errors.New("could not encode")
 )
 
 type feed struct {
@@ -469,6 +470,10 @@ func main() {
 			}
 
 			rawFeedLimit := r.URL.Query().Get("limit")
+			if strings.TrimSpace(rawFeedLimit) == "" {
+				rawFeedLimit = "1"
+			}
+
 			feedLimit, err := strconv.Atoi(rawFeedLimit)
 			if err != nil {
 				http.Error(w, errInvalidLimit.Error(), http.StatusUnprocessableEntity)
@@ -486,6 +491,8 @@ func main() {
 				return
 			}
 
+			feedCursor := r.URL.Query().Get("cursor")
+
 			defer func() {
 				if err := recover(); err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
@@ -494,23 +501,55 @@ func main() {
 				}
 			}()
 
-			rawFeedPosts, err := persister.GetFeedPosts(ctx, u.Rkey, time.Now().Add(-*ttl), int32(feedLimit))
-			if err != nil {
-				panic(err)
+			rawFeedPosts := []models.GetFeedPostsRow{}
+			if strings.TrimSpace(feedCursor) == "" {
+				rawFeedPosts, err = persister.GetFeedPosts(ctx, u.Rkey, time.Now().Add(-*ttl), int32(feedLimit))
+				if err != nil {
+					panic(err)
+				}
+			} else {
+				cursor, err := iutil.ParseAtUri(feedCursor)
+				if err != nil {
+					http.Error(w, errInvalidFeedCursor.Error(), http.StatusUnprocessableEntity)
+
+					log.Println(errInvalidFeedCursor)
+
+					return
+				}
+
+				fp, err := persister.GetFeedPostsCursor(
+					ctx,
+					u.Rkey,
+					time.Now().Add(-*ttl),
+					int32(feedLimit),
+					cursor.Did,
+					cursor.Rkey,
+				)
+				if err != nil {
+					panic(err)
+				}
+
+				for _, p := range fp {
+					rawFeedPosts = append(rawFeedPosts, models.GetFeedPostsRow(p))
+				}
 			}
 
-			feedResponse := feed{
+			res := feed{
 				Feed: []feedPost{},
 			}
 			for _, rawFeedPost := range rawFeedPosts {
-				feedResponse.Feed = append(feedResponse.Feed, feedPost{
+				res.Feed = append(res.Feed, feedPost{
 					Post: fmt.Sprintf("at://%s/%s/%s", rawFeedPost.Did, lexiconFeedPost, rawFeedPost.Rkey),
 				})
 			}
 
+			if len(res.Feed) > 0 {
+				res.Cursor = res.Feed[len(res.Feed)-1].Post
+			}
+
 			w.Header().Set("Content-Type", "application/json")
 
-			if err := json.NewEncoder(w).Encode(feedResponse); err != nil {
+			if err := json.NewEncoder(w).Encode(res); err != nil {
 				panic(fmt.Errorf("%w: %v", errCouldNotEncode, err))
 			}
 		}))
@@ -524,7 +563,7 @@ func main() {
 				}
 			}()
 
-			didResponse := didDocument{
+			res := didDocument{
 				Context: []string{"https://www.w3.org/ns/did/v1"},
 				ID:      *did,
 				Service: []service{
@@ -538,7 +577,7 @@ func main() {
 
 			w.Header().Set("Content-Type", "application/json")
 
-			if err := json.NewEncoder(w).Encode(didResponse); err != nil {
+			if err := json.NewEncoder(w).Encode(res); err != nil {
 				panic(fmt.Errorf("%w: %v", errCouldNotEncode, err))
 			}
 		}))

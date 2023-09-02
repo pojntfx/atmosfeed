@@ -30,3 +30,23 @@ where fp.feed_name = $1
     and p.created_at > $2
 order by p.created_at desc
 limit $3;
+-- name: GetFeedPostsCursor :many
+with referenceposttime as (
+    select created_at
+    from posts
+    where posts.did = $4
+        and posts.rkey = $5
+)
+select p.did,
+    p.rkey
+from posts p
+    join feed_posts fp on p.did = fp.post_did
+    and p.rkey = fp.post_rkey
+where fp.feed_name = $1
+    and p.created_at > $2
+    and p.created_at < (
+        select created_at
+        from referenceposttime
+    )
+order by p.created_at desc
+limit $3;

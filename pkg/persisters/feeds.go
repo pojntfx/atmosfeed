@@ -63,3 +63,20 @@ func (p *Persister) GetFeedPosts(
 		Limit:     limit,
 	})
 }
+
+func (p *Persister) GetFeedPostsCursor(
+	ctx context.Context,
+	feedName string,
+	ttl time.Time,
+	limit int32,
+	did string,
+	rkey string,
+) ([]models.GetFeedPostsCursorRow, error) {
+	return p.queries.GetFeedPostsCursor(ctx, models.GetFeedPostsCursorParams{
+		FeedName:  feedName,
+		CreatedAt: ttl,
+		Limit:     limit,
+		Did:       did,
+		Rkey:      rkey,
+	})
+}

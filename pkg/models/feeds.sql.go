@@ -99,6 +99,70 @@ func (q *Queries) GetFeedPosts(ctx context.Context, arg GetFeedPostsParams) ([]G
 	return items, nil
 }
 
+const getFeedPostsCursor = `-- name: GetFeedPostsCursor :many
+with referenceposttime as (
+    select created_at
+    from posts
+    where posts.did = $4
+        and posts.rkey = $5
+)
+select p.did,
+    p.rkey
+from posts p
+    join feed_posts fp on p.did = fp.post_did
+    and p.rkey = fp.post_rkey
+where fp.feed_name = $1
+    and p.created_at > $2
+    and p.created_at < (
+        select created_at
+        from referenceposttime
+    )
+order by p.created_at desc
+limit $3
+`
+
+type GetFeedPostsCursorParams struct {
+	FeedName  string
+	CreatedAt time.Time
+	Limit     int32
+	Did       string
+	Rkey      string
+}
+
+type GetFeedPostsCursorRow struct {
+	Did  string
+	Rkey string
+}
+
+func (q *Queries) GetFeedPostsCursor(ctx context.Context, arg GetFeedPostsCursorParams) ([]GetFeedPostsCursorRow, error) {
+	rows, err := q.db.QueryContext(ctx, getFeedPostsCursor,
+		arg.FeedName,
+		arg.CreatedAt,
+		arg.Limit,
+		arg.Did,
+		arg.Rkey,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetFeedPostsCursorRow
+	for rows.Next() {
+		var i GetFeedPostsCursorRow
+		if err := rows.Scan(&i.Did, &i.Rkey); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getFeeds = `-- name: GetFeeds :many
 select name, classifier
 from feeds
