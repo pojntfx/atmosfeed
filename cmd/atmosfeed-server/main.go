@@ -112,7 +112,7 @@ func main() {
 
 	persister := persisters.NewPersister(*postgresURL)
 
-	if err := persister.Init(); err != nil {
+	if err := persister.Init(true); err != nil {
 		panic(err)
 	}
 

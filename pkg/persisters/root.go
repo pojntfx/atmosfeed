@@ -22,21 +22,23 @@ func NewPersister(pgaddr string) *Persister {
 	}
 }
 
-func (p *Persister) Init() error {
+func (p *Persister) Init(migrate bool) error {
 	var err error
 	p.db, err = sql.Open("postgres", p.pgaddr)
 	if err != nil {
 		return err
 	}
 
-	goose.SetBaseFS(migrations.FS)
+	if migrate {
+		goose.SetBaseFS(migrations.FS)
 
-	if err := goose.SetDialect("postgres"); err != nil {
-		return err
-	}
+		if err := goose.SetDialect("postgres"); err != nil {
+			return err
+		}
 
-	if err := goose.Up(p.db, "."); err != nil {
-		return err
+		if err := goose.Up(p.db, "."); err != nil {
+			return err
+		}
 	}
 
 	p.queries = models.New(p.db)
