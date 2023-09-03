@@ -12,7 +12,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
 	"signature"
 	"strconv"
@@ -77,9 +76,9 @@ type service struct {
 }
 
 func main() {
-	pdsURL := flag.String("pds-url", "https://bsky.social/", "PDS URL (can also be set using `PDS_URL` env variable)")
+	pdsURL := flag.String("pds-url", "https://bsky.social", "PDS URL")
 
-	postgresURL := flag.String("postgres-url", "postgresql://postgres@localhost:5432/atmosfeed?sslmode=disable", "PostgreSQL URL (can also be set using `POSTGRES_URL` env variable)")
+	postgresURL := flag.String("postgres-url", "postgresql://postgres@localhost:5432/atmosfeed?sslmode=disable", "PostgreSQL URL")
 	laddr := flag.String("laddr", "localhost:1337", "Listen address")
 
 	classifierTimeout := flag.Duration("classifier-timeout", time.Second, "Amount of time after which to stop a classifer Scale function from running")
@@ -95,12 +94,6 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	if v := os.Getenv("POSTGRES_URL"); v != "" {
-		log.Println("Using database address from POSTGRES_URL env variable")
-
-		*postgresURL = v
-	}
 
 	pu, err := url.Parse(*pdsURL)
 	if err != nil {

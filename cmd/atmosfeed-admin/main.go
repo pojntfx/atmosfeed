@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	postgresURL := flag.String("postgres-url", "postgresql://postgres@localhost:5432/atmosfeed?sslmode=disable", "PostgreSQL URL (can also be set using `POSTGRES_URL` env variable)")
+	postgresURL := flag.String("postgres-url", "postgresql://postgres@localhost:5432/atmosfeed?sslmode=disable", "PostgreSQL URL")
 
 	feedRkey := flag.String("feed-rkey", "trending", "Machine-readable key for the feed")
 	feedClassifier := flag.String("feed-classifier", "out/local-trending-latest.scale", "Path to the feed classifier to upload (ignored for `--delete`)")
@@ -21,12 +21,6 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	if v := os.Getenv("POSTGRES_URL"); v != "" {
-		log.Println("Using database address from POSTGRES_URL env variable")
-
-		*postgresURL = v
-	}
 
 	persister := persisters.NewPersister(*postgresURL)
 
