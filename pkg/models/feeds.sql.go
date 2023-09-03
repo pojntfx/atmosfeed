@@ -12,42 +12,61 @@ import (
 
 const createFeedPost = `-- name: CreateFeedPost :exec
 insert into feed_posts (
-        feed_name,
+        feed_did,
+        feed_rkey,
         post_did,
         post_rkey
     )
-values ($1, $2, $3)
+values ($1, $2, $3, $4)
 `
 
 type CreateFeedPostParams struct {
-	FeedName string
+	FeedDid  string
+	FeedRkey string
 	PostDid  string
 	PostRkey string
 }
 
 func (q *Queries) CreateFeedPost(ctx context.Context, arg CreateFeedPostParams) error {
-	_, err := q.db.ExecContext(ctx, createFeedPost, arg.FeedName, arg.PostDid, arg.PostRkey)
+	_, err := q.db.ExecContext(ctx, createFeedPost,
+		arg.FeedDid,
+		arg.FeedRkey,
+		arg.PostDid,
+		arg.PostRkey,
+	)
 	return err
 }
 
 const deleteFeed = `-- name: DeleteFeed :exec
 delete from feeds
-where name = $1
+where did = $1
+    and rkey = $2
 `
 
-func (q *Queries) DeleteFeed(ctx context.Context, name string) error {
-	_, err := q.db.ExecContext(ctx, deleteFeed, name)
+type DeleteFeedParams struct {
+	Did  string
+	Rkey string
+}
+
+func (q *Queries) DeleteFeed(ctx context.Context, arg DeleteFeedParams) error {
+	_, err := q.db.ExecContext(ctx, deleteFeed, arg.Did, arg.Rkey)
 	return err
 }
 
 const getFeedClassifier = `-- name: GetFeedClassifier :one
 select classifier
 from feeds
-where name = $1
+where did = $1
+    and rkey = $2
 `
 
-func (q *Queries) GetFeedClassifier(ctx context.Context, name string) ([]byte, error) {
-	row := q.db.QueryRowContext(ctx, getFeedClassifier, name)
+type GetFeedClassifierParams struct {
+	Did  string
+	Rkey string
+}
+
+func (q *Queries) GetFeedClassifier(ctx context.Context, arg GetFeedClassifierParams) ([]byte, error) {
+	row := q.db.QueryRowContext(ctx, getFeedClassifier, arg.Did, arg.Rkey)
 	var classifier []byte
 	err := row.Scan(&classifier)
 	return classifier, err
@@ -59,14 +78,16 @@ select p.did,
 from posts p
     join feed_posts fp on p.did = fp.post_did
     and p.rkey = fp.post_rkey
-where fp.feed_name = $1
-    and p.created_at > $2
+where fp.feed_did = $1
+    and fp.feed_rkey = $2
+    and p.created_at > $3
 order by p.created_at desc
-limit $3
+limit $4
 `
 
 type GetFeedPostsParams struct {
-	FeedName  string
+	FeedDid   string
+	FeedRkey  string
 	CreatedAt time.Time
 	Limit     int32
 }
@@ -77,7 +98,12 @@ type GetFeedPostsRow struct {
 }
 
 func (q *Queries) GetFeedPosts(ctx context.Context, arg GetFeedPostsParams) ([]GetFeedPostsRow, error) {
-	rows, err := q.db.QueryContext(ctx, getFeedPosts, arg.FeedName, arg.CreatedAt, arg.Limit)
+	rows, err := q.db.QueryContext(ctx, getFeedPosts,
+		arg.FeedDid,
+		arg.FeedRkey,
+		arg.CreatedAt,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -103,26 +129,28 @@ const getFeedPostsCursor = `-- name: GetFeedPostsCursor :many
 with referenceposttime as (
     select created_at
     from posts
-    where posts.did = $4
-        and posts.rkey = $5
+    where posts.did = $5
+        and posts.rkey = $6
 )
 select p.did,
     p.rkey
 from posts p
     join feed_posts fp on p.did = fp.post_did
     and p.rkey = fp.post_rkey
-where fp.feed_name = $1
-    and p.created_at > $2
+where fp.feed_did = $1
+    and fp.feed_rkey = $2
+    and p.created_at > $3
     and p.created_at < (
         select created_at
         from referenceposttime
     )
 order by p.created_at desc
-limit $3
+limit $4
 `
 
 type GetFeedPostsCursorParams struct {
-	FeedName  string
+	FeedDid   string
+	FeedRkey  string
 	CreatedAt time.Time
 	Limit     int32
 	Did       string
@@ -136,7 +164,8 @@ type GetFeedPostsCursorRow struct {
 
 func (q *Queries) GetFeedPostsCursor(ctx context.Context, arg GetFeedPostsCursorParams) ([]GetFeedPostsCursorRow, error) {
 	rows, err := q.db.QueryContext(ctx, getFeedPostsCursor,
-		arg.FeedName,
+		arg.FeedDid,
+		arg.FeedRkey,
 		arg.CreatedAt,
 		arg.Limit,
 		arg.Did,
@@ -164,7 +193,7 @@ func (q *Queries) GetFeedPostsCursor(ctx context.Context, arg GetFeedPostsCursor
 }
 
 const getFeeds = `-- name: GetFeeds :many
-select name, classifier
+select did, rkey, classifier
 from feeds
 `
 
@@ -177,7 +206,7 @@ func (q *Queries) GetFeeds(ctx context.Context) ([]Feed, error) {
 	var items []Feed
 	for rows.Next() {
 		var i Feed
-		if err := rows.Scan(&i.Name, &i.Classifier); err != nil {
+		if err := rows.Scan(&i.Did, &i.Rkey, &i.Classifier); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -192,18 +221,19 @@ func (q *Queries) GetFeeds(ctx context.Context) ([]Feed, error) {
 }
 
 const upsertFeed = `-- name: UpsertFeed :exec
-insert into feeds (name, classifier)
-values ($1, $2) on conflict (name) do
+insert into feeds (did, rkey, classifier)
+values ($1, $2, $3) on conflict (did, rkey) do
 update
 set classifier = excluded.classifier
 `
 
 type UpsertFeedParams struct {
-	Name       string
+	Did        string
+	Rkey       string
 	Classifier []byte
 }
 
 func (q *Queries) UpsertFeed(ctx context.Context, arg UpsertFeedParams) error {
-	_, err := q.db.ExecContext(ctx, upsertFeed, arg.Name, arg.Classifier)
+	_, err := q.db.ExecContext(ctx, upsertFeed, arg.Did, arg.Rkey, arg.Classifier)
 	return err
 }

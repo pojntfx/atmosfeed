@@ -1,17 +1,17 @@
 -- +goose Up
 -- +goose StatementBegin
 -- Function for insert
-create or replace function notify_feed_insert() returns trigger as $$ begin perform pg_notify('feed_inserted', new.name);
+create or replace function notify_feed_insert() returns trigger as $$ begin perform pg_notify('feed_inserted', new.did || '/' || new.rkey);
 return new;
 end;
 $$ language plpgsql;
 -- Function for update
-create or replace function notify_feed_update() returns trigger as $$ begin perform pg_notify('feed_updated', new.name);
+create or replace function notify_feed_update() returns trigger as $$ begin perform pg_notify('feed_updated', old.did || '/' || new.rkey);
 return new;
 end;
 $$ language plpgsql;
 -- Function for delete
-create or replace function notify_feed_delete() returns trigger as $$ begin perform pg_notify('feed_deleted', old.name);
+create or replace function notify_feed_delete() returns trigger as $$ begin perform pg_notify('feed_deleted', old.did || '/' || old.rkey);
 return old;
 end;
 $$ language plpgsql;

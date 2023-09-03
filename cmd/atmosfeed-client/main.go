@@ -94,7 +94,7 @@ func main() {
 		}
 
 		if *publish {
-			if err := persister.DeleteFeed(ctx, *feedRkey); err != nil {
+			if err := persister.DeleteFeed(ctx, auth.Did, *feedRkey); err != nil {
 				panic(err)
 			}
 		}
@@ -105,7 +105,7 @@ func main() {
 				panic(err)
 			}
 
-			if err := persister.UpsertFeed(ctx, *feedRkey, b); err != nil {
+			if err := persister.UpsertFeed(ctx, auth.Did, *feedRkey, b); err != nil {
 				panic(err)
 			}
 		}

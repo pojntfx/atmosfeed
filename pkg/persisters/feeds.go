@@ -9,11 +9,13 @@ import (
 
 func (p *Persister) UpsertFeed(
 	ctx context.Context,
-	name string,
+	did string,
+	rkey string,
 	classifier []byte,
 ) error {
 	return p.queries.UpsertFeed(ctx, models.UpsertFeedParams{
-		Name:       name,
+		Did:        did,
+		Rkey:       rkey,
 		Classifier: classifier,
 	})
 }
@@ -26,39 +28,51 @@ func (p *Persister) GetFeeds(
 
 func (p *Persister) GetFeedClassifier(
 	ctx context.Context,
-	name string,
+	did string,
+	rkey string,
 ) ([]byte, error) {
-	return p.queries.GetFeedClassifier(ctx, name)
+	return p.queries.GetFeedClassifier(ctx, models.GetFeedClassifierParams{
+		Did:  did,
+		Rkey: rkey,
+	})
 }
 
 func (p *Persister) DeleteFeed(
 	ctx context.Context,
-	name string,
+	did string,
+	rkey string,
 ) error {
-	return p.queries.DeleteFeed(ctx, name)
+	return p.queries.DeleteFeed(ctx, models.DeleteFeedParams{
+		Did:  did,
+		Rkey: rkey,
+	})
 }
 
 func (p *Persister) CreateFeedPost(
 	ctx context.Context,
-	feedName string,
+	feedDid string,
+	feedRkey string,
 	postDid string,
-	postKkey string,
+	postRkey string,
 ) error {
 	return p.queries.CreateFeedPost(ctx, models.CreateFeedPostParams{
-		FeedName: feedName,
+		FeedDid:  feedDid,
+		FeedRkey: feedRkey,
 		PostDid:  postDid,
-		PostRkey: postKkey,
+		PostRkey: postRkey,
 	})
 }
 
 func (p *Persister) GetFeedPosts(
 	ctx context.Context,
-	feedName string,
+	feedDid string,
+	feedRkey string,
 	ttl time.Time,
 	limit int32,
 ) ([]models.GetFeedPostsRow, error) {
 	return p.queries.GetFeedPosts(ctx, models.GetFeedPostsParams{
-		FeedName:  feedName,
+		FeedDid:   feedDid,
+		FeedRkey:  feedRkey,
 		CreatedAt: ttl,
 		Limit:     limit,
 	})
@@ -66,17 +80,19 @@ func (p *Persister) GetFeedPosts(
 
 func (p *Persister) GetFeedPostsCursor(
 	ctx context.Context,
-	feedName string,
+	feedDid string,
+	feedRkey string,
 	ttl time.Time,
 	limit int32,
-	did string,
-	rkey string,
+	postDid string,
+	postRkey string,
 ) ([]models.GetFeedPostsCursorRow, error) {
 	return p.queries.GetFeedPostsCursor(ctx, models.GetFeedPostsCursorParams{
-		FeedName:  feedName,
+		FeedDid:   feedDid,
+		FeedRkey:  feedRkey,
 		CreatedAt: ttl,
 		Limit:     limit,
-		Did:       did,
-		Rkey:      rkey,
+		Did:       postDid,
+		Rkey:      postRkey,
 	})
 }

@@ -134,21 +134,23 @@ func main() {
 
 	go func() {
 		for notification := range listener.Notify {
+			did, rkey := path.Dir(notification.Extra), path.Base(notification.Extra)
+
 			switch notification.Channel {
 			case channelFeedInserted:
 				if *verbose {
-					log.Println("Created feed", notification.Extra)
+					log.Println("Created feed", did, rkey)
 				}
 
 				fallthrough
 
 			case channelFeedUpdated:
 				if *verbose {
-					log.Println("Updated feed", notification.Extra)
+					log.Println("Updated feed", did, rkey)
 				}
 
 				func() {
-					classifierSource, err := persister.GetFeedClassifier(ctx, notification.Extra)
+					classifierSource, err := persister.GetFeedClassifier(ctx, did, rkey)
 					if err != nil {
 						log.Println("Could not fetch new classifier, skipping:", err)
 
@@ -180,19 +182,19 @@ func main() {
 					}
 					defer instance.Cleanup()
 
-					classifiers[notification.Extra] = instance
+					classifiers[path.Join(did, rkey)] = instance
 				}()
 
 			case channelFeedDeleted:
 				if *verbose {
-					log.Println("Deleted feed", notification.Extra)
+					log.Println("Deleted feed", did, rkey)
 				}
 
 				func() {
 					classifierLock.Lock()
 					defer classifierLock.Unlock()
 
-					delete(classifiers, notification.Extra)
+					delete(classifiers, path.Join(did, rkey))
 				}()
 			}
 		}
@@ -242,7 +244,7 @@ func main() {
 			}
 			defer instance.Cleanup()
 
-			classifiers[classifierSource.Name] = instance
+			classifiers[path.Join(classifierSource.Did, classifierSource.Rkey)] = instance
 		}()
 	}
 
@@ -259,7 +261,9 @@ func main() {
 		for feed, classifier := range classifiers {
 			wg.Add(1)
 
-			go func(feedName string, classifier *scale.Instance[*signature.Signature]) {
+			did, rkey := path.Dir(feed), path.Base(feed)
+
+			go func(feedDid, feedRkey string, classifier *scale.Instance[*signature.Signature]) {
 				defer wg.Done()
 
 				p := signature.NewPost()
@@ -288,7 +292,7 @@ func main() {
 				}
 
 				if s.Context.Include {
-					if err := persister.CreateFeedPost(ctx, feedName, p.Did, p.Rkey); err != nil {
+					if err := persister.CreateFeedPost(ctx, feedDid, feedRkey, p.Did, p.Rkey); err != nil {
 						// We can safely ignore inserts if the feed that it should be inserted in was deleted
 						if err, ok := err.(*pq.Error); !ok || err.Code != pq.ErrorCode(errPostgresForeignKeyViolation) {
 							errs <- err
@@ -297,7 +301,7 @@ func main() {
 						return
 					}
 				}
-			}(feed, classifier)
+			}(did, rkey, classifier)
 		}
 
 		go func() {
@@ -501,7 +505,13 @@ func main() {
 
 			rawFeedPosts := []models.GetFeedPostsRow{}
 			if strings.TrimSpace(feedCursor) == "" {
-				rawFeedPosts, err = persister.GetFeedPosts(ctx, u.Rkey, time.Now().Add(-*ttl), int32(feedLimit))
+				rawFeedPosts, err = persister.GetFeedPosts(
+					ctx,
+					u.Did,
+					u.Rkey,
+					time.Now().Add(-*ttl),
+					int32(feedLimit),
+				)
 				if err != nil {
 					panic(err)
 				}
@@ -517,6 +527,7 @@ func main() {
 
 				fp, err := persister.GetFeedPostsCursor(
 					ctx,
+					u.Did,
 					u.Rkey,
 					time.Now().Add(-*ttl),
 					int32(feedLimit),

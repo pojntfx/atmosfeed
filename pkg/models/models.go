@@ -9,12 +9,14 @@ import (
 )
 
 type Feed struct {
-	Name       string
+	Did        string
+	Rkey       string
 	Classifier []byte
 }
 
 type FeedPost struct {
-	FeedName string
+	FeedDid  string
+	FeedRkey string
 	PostDid  string
 	PostRkey string
 }
