@@ -6,8 +6,8 @@ model "Context" {
     reference = "Post"
   }
 
-  bool "Include" {
-    default = false
+  int64 "Weight" {
+    default = 0
   }
 }
 

@@ -15,14 +15,17 @@ where did = $1
 delete from feeds
 where did = $1
     and rkey = $2;
--- name: CreateFeedPost :exec
+-- name: UpsertFeedPost :exec
 insert into feed_posts (
         feed_did,
         feed_rkey,
         post_did,
-        post_rkey
+        post_rkey,
+        weight
     )
-values ($1, $2, $3, $4);
+values ($1, $2, $3, $4, $5) on conflict (feed_did, feed_rkey, post_did, post_rkey) do
+update
+set weight = excluded.weight;
 -- name: GetFeedPosts :many
 select p.did,
     p.rkey
@@ -32,7 +35,7 @@ from posts p
 where fp.feed_did = $1
     and fp.feed_rkey = $2
     and p.created_at > $3
-order by p.created_at desc
+order by fp.weight desc
 limit $4;
 -- name: GetFeedPostsCursor :many
 with referenceposttime as (
@@ -53,5 +56,5 @@ where fp.feed_did = $1
         select created_at
         from referenceposttime
     )
-order by p.created_at desc
+order by fp.weight desc
 limit $4;

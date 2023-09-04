@@ -19,6 +19,7 @@ type FeedPost struct {
 	FeedRkey string
 	PostDid  string
 	PostRkey string
+	Weight   int32
 }
 
 type Post struct {

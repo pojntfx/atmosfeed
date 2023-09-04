@@ -2,13 +2,13 @@ package german
 
 import (
 	"signature"
-
-	"golang.org/x/exp/slices"
 )
 
 func Scale(ctx *signature.Context) (*signature.Context, error) {
-	if slices.Contains(ctx.Post.Langs, "de") {
-		ctx.Include = true
+	if len(ctx.Post.Langs) == 1 && ctx.Post.Langs[0] == "de" {
+		ctx.Weight = ctx.Post.Likes
+	} else {
+		ctx.Weight = -1
 	}
 
 	return signature.Next(ctx)

@@ -291,8 +291,8 @@ func main() {
 					return
 				}
 
-				if s.Context.Include {
-					if err := persister.CreateFeedPost(ctx, feedDid, feedRkey, p.Did, p.Rkey); err != nil {
+				if s.Context.Weight >= 0 {
+					if err := persister.UpsertFeedPost(ctx, feedDid, feedRkey, p.Did, p.Rkey, int32(s.Context.Weight)); err != nil {
 						// We can safely ignore inserts if the feed that it should be inserted in was deleted
 						if err, ok := err.(*pq.Error); !ok || err.Code != pq.ErrorCode(errPostgresForeignKeyViolation) {
 							errs <- err

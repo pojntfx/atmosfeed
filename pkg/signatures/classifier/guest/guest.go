@@ -8,7 +8,7 @@ import (
 	"unsafe"
 )
 
-const hash = "894b6407df03f83d2f8a2573ae8547278619477f464970644d20b6989103e9fd"
+const hash = "4a8a84f12b689b5b500cd44fc143e32a7432a548a8ba913a8deef52fa3a0ce12"
 
 var (
 	writeBuffer = polyglot.NewBuffer()

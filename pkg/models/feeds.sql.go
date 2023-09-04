@@ -10,33 +10,6 @@ import (
 	"time"
 )
 
-const createFeedPost = `-- name: CreateFeedPost :exec
-insert into feed_posts (
-        feed_did,
-        feed_rkey,
-        post_did,
-        post_rkey
-    )
-values ($1, $2, $3, $4)
-`
-
-type CreateFeedPostParams struct {
-	FeedDid  string
-	FeedRkey string
-	PostDid  string
-	PostRkey string
-}
-
-func (q *Queries) CreateFeedPost(ctx context.Context, arg CreateFeedPostParams) error {
-	_, err := q.db.ExecContext(ctx, createFeedPost,
-		arg.FeedDid,
-		arg.FeedRkey,
-		arg.PostDid,
-		arg.PostRkey,
-	)
-	return err
-}
-
 const deleteFeed = `-- name: DeleteFeed :exec
 delete from feeds
 where did = $1
@@ -81,7 +54,7 @@ from posts p
 where fp.feed_did = $1
     and fp.feed_rkey = $2
     and p.created_at > $3
-order by p.created_at desc
+order by fp.weight desc
 limit $4
 `
 
@@ -144,7 +117,7 @@ where fp.feed_did = $1
         select created_at
         from referenceposttime
     )
-order by p.created_at desc
+order by fp.weight desc
 limit $4
 `
 
@@ -235,5 +208,37 @@ type UpsertFeedParams struct {
 
 func (q *Queries) UpsertFeed(ctx context.Context, arg UpsertFeedParams) error {
 	_, err := q.db.ExecContext(ctx, upsertFeed, arg.Did, arg.Rkey, arg.Classifier)
+	return err
+}
+
+const upsertFeedPost = `-- name: UpsertFeedPost :exec
+insert into feed_posts (
+        feed_did,
+        feed_rkey,
+        post_did,
+        post_rkey,
+        weight
+    )
+values ($1, $2, $3, $4, $5) on conflict (feed_did, feed_rkey, post_did, post_rkey) do
+update
+set weight = excluded.weight
+`
+
+type UpsertFeedPostParams struct {
+	FeedDid  string
+	FeedRkey string
+	PostDid  string
+	PostRkey string
+	Weight   int32
+}
+
+func (q *Queries) UpsertFeedPost(ctx context.Context, arg UpsertFeedPostParams) error {
+	_, err := q.db.ExecContext(ctx, upsertFeedPost,
+		arg.FeedDid,
+		arg.FeedRkey,
+		arg.PostDid,
+		arg.PostRkey,
+		arg.Weight,
+	)
 	return err
 }

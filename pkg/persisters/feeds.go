@@ -48,18 +48,20 @@ func (p *Persister) DeleteFeed(
 	})
 }
 
-func (p *Persister) CreateFeedPost(
+func (p *Persister) UpsertFeedPost(
 	ctx context.Context,
 	feedDid string,
 	feedRkey string,
 	postDid string,
 	postRkey string,
+	weight int32,
 ) error {
-	return p.queries.CreateFeedPost(ctx, models.CreateFeedPostParams{
+	return p.queries.UpsertFeedPost(ctx, models.UpsertFeedPostParams{
 		FeedDid:  feedDid,
 		FeedRkey: feedRkey,
 		PostDid:  postDid,
 		PostRkey: postRkey,
+		Weight:   weight,
 	})
 }
 

@@ -16,7 +16,7 @@ var (
 type Context struct {
 	Post *Post
 
-	Include bool
+	Weight int64
 }
 
 func NewContext() *Context {
@@ -24,7 +24,7 @@ func NewContext() *Context {
 
 		Post: NewPost(),
 
-		Include: false,
+		Weight: 0,
 	}
 }
 
@@ -36,7 +36,7 @@ func (x *Context) Encode(b *polyglot.Buffer) {
 
 		x.Post.Encode(b)
 
-		e.Bool(x.Include)
+		e.Int64(x.Weight)
 
 	}
 }
@@ -66,7 +66,7 @@ func _decodeContext(x *Context, d *polyglot.Decoder) (*Context, error) {
 		return nil, err
 	}
 
-	x.Include, err = d.Bool()
+	x.Weight, err = d.Int64()
 	if err != nil {
 		return nil, err
 	}

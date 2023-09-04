@@ -5,7 +5,7 @@ import (
 )
 
 func Scale(ctx *signature.Context) (*signature.Context, error) {
-	ctx.Include = true
+	ctx.Weight = ctx.Post.CreatedAt
 
 	return signature.Next(ctx)
 }
