@@ -43,7 +43,7 @@ benchmark:
 
 # Clean
 clean:
-	rm -rf out pkg/models pkg/signatures/*/guest pkg/signatures/*/host
+	rm -rf out pkg/models pkg/signatures/go/* pkg/signatures/rust/*
 
 # Dependencies
 depend: depend/signature depend/classifier depend/sql
@@ -51,9 +51,10 @@ depend: depend/signature depend/classifier depend/sql
 depend/signature: $(addprefix depend/signature/,$(signatures))
 $(addprefix depend/signature/,$(signatures)):
 	scale signature generate $(subst depend/signature/,,$@):latest -d ./pkg/signatures/$(subst depend/signature/,,$@)
-	mkdir -p pkg/signatures/$(subst depend/signature/,,$@)/guest pkg/signatures/$(subst depend/signature/,,$@)/host out
-	scale signature export local/$(subst depend/signature/,,$@):latest go guest pkg/signatures/$(subst depend/signature/,,$@)/guest
-	scale signature export local/$(subst depend/signature/,,$@):latest go host pkg/signatures/$(subst depend/signature/,,$@)/host
+	mkdir -p pkg/signatures/$(subst depend/signature/,,$@)/go/guest pkg/signatures/$(subst depend/signature/,,$@)/go/host pkg/signatures/$(subst depend/signature/,,$@)/rust/guest
+	scale signature export local/$(subst depend/signature/,,$@):latest go guest pkg/signatures/$(subst depend/signature/,,$@)/go/guest
+	scale signature export local/$(subst depend/signature/,,$@):latest go host pkg/signatures/$(subst depend/signature/,,$@)/go/host
+	scale signature export local/$(subst depend/signature/,,$@):latest rust guest pkg/signatures/$(subst depend/signature/,,$@)/rust/guest
 
 depend/classifier: $(addprefix depend/classifier/,$(classifiers))
 $(addprefix depend/classifier/,$(classifiers)):

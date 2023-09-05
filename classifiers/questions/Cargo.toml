@@ -1,0 +1,20 @@
+
+[package]
+name = "questions"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+
+signature = { package = "local_classifier_latest_guest", path = "/home/pojntfx/.config/scale/signatures/local_classifier_latest_4a8a84f12b689b5b500cd44fc143e32a7432a548a8ba913a8deef52fa3a0ce12_signature/rust/guest" }
+
+
+
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

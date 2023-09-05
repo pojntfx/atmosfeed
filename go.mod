@@ -96,4 +96,4 @@ require (
 
 require signature v0.1.0
 
-replace signature v0.1.0 => ./pkg/signatures/classifier/host
+replace signature v0.1.0 => ./pkg/signatures/classifier/go/host

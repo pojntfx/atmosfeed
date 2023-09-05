@@ -1,7 +1,7 @@
 version  = "v1alpha"
 name     = "questions"
 tag      = "latest"
-language = "go"
+language = "rust"
 
 signature {
   organization = "local"
@@ -9,6 +9,6 @@ signature {
   tag          = "latest"
 }
 
-function    = "Scale"
+function    = "scale"
 initialize  = ""
 description = ""
