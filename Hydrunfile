@@ -14,7 +14,7 @@ if [ "$1" = "test" ]; then
     tar xvzf /tmp/tinygo.tar.gz -C /opt
     export PATH=$PATH:/opt/tinygo/bin
 
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -- -y
 
     # Configure Git
     git config --global --add safe.directory '*'
@@ -40,7 +40,7 @@ if [ "$1" = "go" ]; then
     tar xvzf /tmp/tinygo.tar.gz -C /opt
     export PATH=$PATH:/opt/tinygo/bin
 
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -- -y
 
     # Configure Git
     git config --global --add safe.directory '*'
