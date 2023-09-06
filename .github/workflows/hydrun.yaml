@@ -20,19 +20,19 @@ jobs:
             os: golang:bookworm
             flags: ""
             cmd: go test ./...
-            dst: out/*
+            dst: out/nonexistent
           - id: atmosfeed-server
             src: .
             os: golang:bookworm
             flags: ""
             cmd: ./Hydrunfile go atmosfeed-server
-            dst: out/*
+            dst: out/atmosfeed-server.*
           - id: atmosfeed-client
             src: .
             os: golang:bookworm
             flags: ""
             cmd: ./Hydrunfile go atmosfeed-client
-            dst: out/*
+            dst: out/atmosfeed-client.*
 
     steps:
       - name: Maximize build space

@@ -180,7 +180,6 @@ func main() {
 
 						return
 					}
-					defer instance.Cleanup()
 
 					classifiers[path.Join(did, rkey)] = instance
 				}()
@@ -242,7 +241,6 @@ func main() {
 
 				return
 			}
-			defer instance.Cleanup()
 
 			classifiers[path.Join(classifierSource.Did, classifierSource.Rkey)] = instance
 		}()

@@ -51,13 +51,14 @@ depend: depend/signature depend/classifier depend/sql
 depend/signature: $(addprefix depend/signature/,$(signatures))
 $(addprefix depend/signature/,$(signatures)):
 	scale signature generate $(subst depend/signature/,,$@):latest -d ./pkg/signatures/$(subst depend/signature/,,$@)
-	mkdir -p pkg/signatures/$(subst depend/signature/,,$@)/go/guest pkg/signatures/$(subst depend/signature/,,$@)/go/host pkg/signatures/$(subst depend/signature/,,$@)/rust/guest
+	mkdir -p $(OUTPUT_DIR) pkg/signatures/$(subst depend/signature/,,$@)/go/guest pkg/signatures/$(subst depend/signature/,,$@)/go/host pkg/signatures/$(subst depend/signature/,,$@)/rust/guest
 	scale signature export local/$(subst depend/signature/,,$@):latest go guest pkg/signatures/$(subst depend/signature/,,$@)/go/guest
 	scale signature export local/$(subst depend/signature/,,$@):latest go host pkg/signatures/$(subst depend/signature/,,$@)/go/host
 	scale signature export local/$(subst depend/signature/,,$@):latest rust guest pkg/signatures/$(subst depend/signature/,,$@)/rust/guest
 
 depend/classifier: $(addprefix depend/classifier/,$(classifiers))
 $(addprefix depend/classifier/,$(classifiers)):
+	mkdir -p $(OUTPUT_DIR)
 	scale function build -d ./classifiers/$(subst depend/classifier/,,$@)
 	scale function export local/$(subst depend/classifier/,,$@):latest $(OUTPUT_DIR)
 
