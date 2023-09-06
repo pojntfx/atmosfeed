@@ -27,6 +27,7 @@ import (
 	"github.com/bluesky-social/indigo/repo"
 	"github.com/bluesky-social/indigo/repomgr"
 	iutil "github.com/bluesky-social/indigo/util"
+	"github.com/bluesky-social/indigo/xrpc"
 	"github.com/gorilla/websocket"
 	"github.com/lib/pq"
 	"github.com/loopholelabs/scale"
@@ -46,30 +47,32 @@ const (
 )
 
 var (
-	errMissingFeedURI    = errors.New("missing feed URI")
-	errInvalidFeedURI    = errors.New("invalid feed URI")
-	errInvalidLimit      = errors.New("invalid limit")
-	errLimitTooHigh      = errors.New("limit too high")
-	errInvalidFeedCursor = errors.New("invalid feed cursor")
-	errCouldNotEncode    = errors.New("could not encode")
+	errMissingFeedURI     = errors.New("missing feed URI")
+	errInvalidFeedURI     = errors.New("invalid feed URI")
+	errInvalidLimit       = errors.New("invalid limit")
+	errLimitTooHigh       = errors.New("limit too high")
+	errInvalidFeedCursor  = errors.New("invalid feed cursor")
+	errCouldNotEncode     = errors.New("could not encode")
+	errCouldNotGetSession = errors.New("could not get session")
+	errCouldNotGetFeeds   = errors.New("could not get feeds")
 )
 
-type feed struct {
-	Feed   []feedPost `json:"feed"`
-	Cursor string     `json:"cursor"`
+type feedSkeleton struct {
+	Feed   []feedSkeletonPost `json:"feed"`
+	Cursor string             `json:"cursor"`
 }
 
-type feedPost struct {
+type feedSkeletonPost struct {
 	Post string `json:"post"`
 }
 
-type didDocument struct {
-	Context []string  `json:"@context"`
-	ID      string    `json:"id"`
-	Service []service `json:"service"`
+type wellKnownDidDocument struct {
+	Context []string           `json:"@context"`
+	ID      string             `json:"id"`
+	Service []wellKnownService `json:"service"`
 }
 
-type service struct {
+type wellKnownService struct {
 	ID              string `json:"id"`
 	Type            string `json:"type"`
 	ServiceEndpoint string `json:"serviceEndpoint"`
@@ -541,11 +544,11 @@ func main() {
 				}
 			}
 
-			res := feed{
-				Feed: []feedPost{},
+			res := feedSkeleton{
+				Feed: []feedSkeletonPost{},
 			}
 			for _, rawFeedPost := range rawFeedPosts {
-				res.Feed = append(res.Feed, feedPost{
+				res.Feed = append(res.Feed, feedSkeletonPost{
 					Post: fmt.Sprintf("at://%s/%s/%s", rawFeedPost.Did, lexiconFeedPost, rawFeedPost.Rkey),
 				})
 			}
@@ -570,10 +573,10 @@ func main() {
 				}
 			}()
 
-			res := didDocument{
+			res := wellKnownDidDocument{
 				Context: []string{"https://www.w3.org/ns/did/v1"},
 				ID:      *feedGeneratorDID,
-				Service: []service{
+				Service: []wellKnownService{
 					{
 						ID:              "#bsky_fg",
 						Type:            "BskyFeedGenerator",
@@ -586,6 +589,58 @@ func main() {
 
 			if err := json.NewEncoder(w).Encode(res); err != nil {
 				panic(fmt.Errorf("%w: %v", errCouldNotEncode, err))
+			}
+		}))
+
+		mux.HandleFunc("/admin/feeds", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				accessJwt := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+				if strings.TrimSpace(accessJwt) == "" {
+					w.WriteHeader(http.StatusUnauthorized)
+
+					return
+				}
+
+				defer func() {
+					if err := recover(); err != nil {
+						w.WriteHeader(http.StatusInternalServerError)
+
+						log.Printf("Client disconnected with error: %v", err)
+					}
+				}()
+
+				client := &xrpc.Client{
+					Client: http.DefaultClient,
+					Host:   *pdsURL,
+					Auth: &xrpc.AuthInfo{
+						AccessJwt: accessJwt,
+					},
+				}
+
+				session, err := atproto.ServerGetSession(r.Context(), client)
+				if err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotGetSession, err))
+				}
+
+				rawAdminFeeds, err := persister.GetFeedsForDid(r.Context(), session.Did)
+				if err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotGetFeeds, err))
+				}
+
+				res := []string{}
+				for _, rawFeed := range rawAdminFeeds {
+					res = append(res, rawFeed.Rkey)
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+
+				if err := json.NewEncoder(w).Encode(res); err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotEncode, err))
+				}
+
+			default:
+				w.WriteHeader(http.StatusMethodNotAllowed)
 			}
 		}))
 

@@ -26,6 +26,13 @@ func (p *Persister) GetFeeds(
 	return p.queries.GetFeeds(ctx)
 }
 
+func (p *Persister) GetFeedsForDid(
+	ctx context.Context,
+	did string,
+) ([]models.Feed, error) {
+	return p.queries.GetFeedsForDid(ctx, did)
+}
+
 func (p *Persister) GetFeedClassifier(
 	ctx context.Context,
 	did string,

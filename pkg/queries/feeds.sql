@@ -6,6 +6,10 @@ set classifier = excluded.classifier;
 -- name: GetFeeds :many
 select *
 from feeds;
+-- name: GetFeedsForDid :many
+select *
+from feeds
+where did = $1;
 -- name: GetFeedClassifier :one
 select classifier
 from feeds

@@ -193,6 +193,35 @@ func (q *Queries) GetFeeds(ctx context.Context) ([]Feed, error) {
 	return items, nil
 }
 
+const getFeedsForDid = `-- name: GetFeedsForDid :many
+select did, rkey, classifier
+from feeds
+where did = $1
+`
+
+func (q *Queries) GetFeedsForDid(ctx context.Context, did string) ([]Feed, error) {
+	rows, err := q.db.QueryContext(ctx, getFeedsForDid, did)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Feed
+	for rows.Next() {
+		var i Feed
+		if err := rows.Scan(&i.Did, &i.Rkey, &i.Classifier); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertFeed = `-- name: UpsertFeed :exec
 insert into feeds (did, rkey, classifier)
 values ($1, $2, $3) on conflict (did, rkey) do
