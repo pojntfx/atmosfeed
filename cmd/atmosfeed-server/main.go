@@ -59,6 +59,7 @@ var (
 	errMissingRkey            = errors.New("missing rkey")
 	errCouldNotReadClassifier = errors.New("could not read classifier")
 	errCouldNotUpsertFeed     = errors.New("could not upsert feed")
+	errCouldNotDeleteFeed     = errors.New("could not delete feed")
 )
 
 type feedSkeleton struct {
@@ -660,6 +661,20 @@ func main() {
 
 				if err := persister.UpsertFeed(ctx, session.Did, rkey, b); err != nil {
 					panic(fmt.Errorf("%w: %v", errCouldNotUpsertFeed, err))
+				}
+
+			case http.MethodDelete:
+				rkey := r.URL.Query().Get("rkey")
+				if strings.TrimSpace(rkey) == "" {
+					http.Error(w, errMissingRkey.Error(), http.StatusUnprocessableEntity)
+
+					log.Println(errMissingRkey)
+
+					return
+				}
+
+				if err := persister.DeleteFeed(ctx, session.Did, rkey); err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotDeleteFeed, err))
 				}
 
 			default:
