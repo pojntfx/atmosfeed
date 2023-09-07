@@ -8,6 +8,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -47,14 +48,17 @@ const (
 )
 
 var (
-	errMissingFeedURI     = errors.New("missing feed URI")
-	errInvalidFeedURI     = errors.New("invalid feed URI")
-	errInvalidLimit       = errors.New("invalid limit")
-	errLimitTooHigh       = errors.New("limit too high")
-	errInvalidFeedCursor  = errors.New("invalid feed cursor")
-	errCouldNotEncode     = errors.New("could not encode")
-	errCouldNotGetSession = errors.New("could not get session")
-	errCouldNotGetFeeds   = errors.New("could not get feeds")
+	errMissingFeedURI         = errors.New("missing feed URI")
+	errInvalidFeedURI         = errors.New("invalid feed URI")
+	errInvalidLimit           = errors.New("invalid limit")
+	errLimitTooHigh           = errors.New("limit too high")
+	errInvalidFeedCursor      = errors.New("invalid feed cursor")
+	errCouldNotEncode         = errors.New("could not encode")
+	errCouldNotGetSession     = errors.New("could not get session")
+	errCouldNotGetFeeds       = errors.New("could not get feeds")
+	errMissingRkey            = errors.New("missing rkey")
+	errCouldNotReadClassifier = errors.New("could not read classifier")
+	errCouldNotUpsertFeed     = errors.New("could not upsert feed")
 )
 
 type feedSkeleton struct {
@@ -593,36 +597,36 @@ func main() {
 		}))
 
 		mux.HandleFunc("/admin/feeds", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			accessJwt := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+			if strings.TrimSpace(accessJwt) == "" {
+				w.WriteHeader(http.StatusUnauthorized)
+
+				return
+			}
+
+			defer func() {
+				if err := recover(); err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+
+					log.Printf("Client disconnected with error: %v", err)
+				}
+			}()
+
+			client := &xrpc.Client{
+				Client: http.DefaultClient,
+				Host:   *pdsURL,
+				Auth: &xrpc.AuthInfo{
+					AccessJwt: accessJwt,
+				},
+			}
+
+			session, err := atproto.ServerGetSession(r.Context(), client)
+			if err != nil {
+				panic(fmt.Errorf("%w: %v", errCouldNotGetSession, err))
+			}
+
 			switch r.Method {
 			case http.MethodGet:
-				accessJwt := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-				if strings.TrimSpace(accessJwt) == "" {
-					w.WriteHeader(http.StatusUnauthorized)
-
-					return
-				}
-
-				defer func() {
-					if err := recover(); err != nil {
-						w.WriteHeader(http.StatusInternalServerError)
-
-						log.Printf("Client disconnected with error: %v", err)
-					}
-				}()
-
-				client := &xrpc.Client{
-					Client: http.DefaultClient,
-					Host:   *pdsURL,
-					Auth: &xrpc.AuthInfo{
-						AccessJwt: accessJwt,
-					},
-				}
-
-				session, err := atproto.ServerGetSession(r.Context(), client)
-				if err != nil {
-					panic(fmt.Errorf("%w: %v", errCouldNotGetSession, err))
-				}
-
 				rawAdminFeeds, err := persister.GetFeedsForDid(r.Context(), session.Did)
 				if err != nil {
 					panic(fmt.Errorf("%w: %v", errCouldNotGetFeeds, err))
@@ -637,6 +641,25 @@ func main() {
 
 				if err := json.NewEncoder(w).Encode(res); err != nil {
 					panic(fmt.Errorf("%w: %v", errCouldNotEncode, err))
+				}
+
+			case http.MethodPut:
+				rkey := r.URL.Query().Get("rkey")
+				if strings.TrimSpace(rkey) == "" {
+					http.Error(w, errMissingRkey.Error(), http.StatusUnprocessableEntity)
+
+					log.Println(errMissingRkey)
+
+					return
+				}
+
+				b, err := io.ReadAll(r.Body)
+				if err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotReadClassifier, err))
+				}
+
+				if err := persister.UpsertFeed(ctx, session.Did, rkey, b); err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotUpsertFeed, err))
 				}
 
 			default:
