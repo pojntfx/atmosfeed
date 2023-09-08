@@ -13,7 +13,9 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
+	"path/filepath"
 	"signature"
 	"strconv"
 	"strings"
@@ -45,6 +47,8 @@ const (
 	errPostgresForeignKeyViolation = "23503"
 
 	lexiconFeedPost = "app.bsky.feed.post"
+
+	classifiersPath = "classifiers"
 )
 
 var (
@@ -84,6 +88,11 @@ type wellKnownService struct {
 }
 
 func main() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		panic(err)
+	}
+
 	pdsURL := flag.String("pds-url", "https://bsky.social", "PDS URL")
 
 	postgresURL := flag.String("postgres-url", "postgresql://postgres@localhost:5432/atmosfeed?sslmode=disable", "PostgreSQL URL")
@@ -96,12 +105,18 @@ func main() {
 	feedGeneratorDID := flag.String("feed-generator-did", "did:web:atmosfeed-feeds.serveo.net", "DID of the feed generator (typically the hostname of the publicly reachable URL)")
 	feedGeneratorURL := flag.String("feed-generator-url", "https://atmosfeed-feeds.serveo.net", "Publicly reachable URL of the feed generator")
 
+	workingDirectory := flag.String("working-directory", filepath.Join(home, ".local", "share", "atmosfeed", "var", "lib", "atmosfeed"), "Working directory to use")
+
 	verbose := flag.Bool("verbose", false, "Whether to enable verbose logging")
 
 	flag.Parse()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	if err := os.RemoveAll(filepath.Join(*workingDirectory, classifiersPath)); err != nil {
+		panic(err)
+	}
 
 	pu, err := url.Parse(*pdsURL)
 	if err != nil {
@@ -165,12 +180,25 @@ func main() {
 						return
 					}
 
+					classifierPath := filepath.Join(*workingDirectory, classifiersPath, did, rkey)
+					if err := os.MkdirAll(filepath.Dir(classifierPath), os.ModePerm); err != nil {
+						log.Println("Could not prepare directory for classifier, skipping:", err)
+
+						return
+					}
+
 					classifierLock.Lock()
 					defer classifierLock.Unlock()
 
-					fn := &scalefunc.Schema{}
-					if err := fn.Decode(classifierSource); err != nil {
-						log.Println("Could not parse classifier, skipping:", err)
+					if err := os.WriteFile(classifierPath, classifierSource, os.ModePerm); err != nil {
+						log.Println("Could not write classifier to disk, skipping:", err)
+
+						return
+					}
+
+					fn, err := scalefunc.Read(classifierPath)
+					if err != nil {
+						log.Println("Could not read classifier, skipping:", err)
 
 						return
 					}
