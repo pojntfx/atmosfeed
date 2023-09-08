@@ -229,6 +229,12 @@ func main() {
 					classifierLock.Lock()
 					defer classifierLock.Unlock()
 
+					if err := os.Remove(filepath.Join(*workingDirectory, classifiersPath, did, rkey)); err != nil {
+						log.Println("Could not remove classifier from disk, skipping:", err)
+
+						return
+					}
+
 					delete(classifiers, path.Join(did, rkey))
 				}()
 			}
