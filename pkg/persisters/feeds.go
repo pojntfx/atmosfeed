@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/pojntfx/atmosfeed/pkg/models"
+	"github.com/redis/go-redis/v9"
 )
 
 func (p *Persister) UpsertFeed(
@@ -13,6 +14,16 @@ func (p *Persister) UpsertFeed(
 	rkey string,
 	classifier []byte,
 ) error {
+	if _, err := p.broker.XAdd(ctx, &redis.XAddArgs{
+		Stream: StreamFeedUpsert,
+		Values: map[string]string{
+			"did":  did,
+			"rkey": rkey,
+		},
+	}).Result(); err != nil {
+		return err
+	}
+
 	return p.queries.UpsertFeed(ctx, models.UpsertFeedParams{
 		Did:        did,
 		Rkey:       rkey,

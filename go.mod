@@ -8,6 +8,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/loopholelabs/scale v0.3.20-dev9.0.20230906102019-a1e935866882
 	github.com/pressly/goose/v3 v3.15.0
+	github.com/redis/go-redis/v9 v9.1.0
 	signature v0.1.0
 )
 
@@ -17,6 +18,7 @@ require (
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect

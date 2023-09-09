@@ -8,17 +8,26 @@ import (
 	"github.com/pojntfx/atmosfeed/pkg/migrations"
 	"github.com/pojntfx/atmosfeed/pkg/models"
 	"github.com/pressly/goose/v3"
+	"github.com/redis/go-redis/v9"
+)
+
+const (
+	StreamFeedUpsert = "feed/upsert"
 )
 
 type Persister struct {
 	pgaddr  string
 	queries *models.Queries
 	db      *sql.DB
+
+	broker *redis.Client
 }
 
-func NewPersister(pgaddr string) *Persister {
+func NewPersister(pgaddr string, broker *redis.Client) *Persister {
 	return &Persister{
 		pgaddr: pgaddr,
+
+		broker: broker,
 	}
 }
 

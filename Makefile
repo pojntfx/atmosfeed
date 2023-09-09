@@ -59,7 +59,7 @@ $(addprefix depend/signature/,$(signatures)):
 depend/classifier: $(addprefix depend/classifier/,$(classifiers))
 $(addprefix depend/classifier/,$(classifiers)):
 	mkdir -p $(OUTPUT_DIR)
-	scale function build -d ./classifiers/$(subst depend/classifier/,,$@)
+	scale function build --release -d ./classifiers/$(subst depend/classifier/,,$@)
 	scale function export local/$(subst depend/classifier/,,$@):latest $(OUTPUT_DIR)
 
 depend/sql:

@@ -31,18 +31,18 @@ import (
 	"github.com/bluesky-social/indigo/repomgr"
 	iutil "github.com/bluesky-social/indigo/util"
 	"github.com/bluesky-social/indigo/xrpc"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/lib/pq"
 	"github.com/loopholelabs/scale"
 	"github.com/loopholelabs/scale/scalefunc"
 	"github.com/pojntfx/atmosfeed/pkg/models"
 	"github.com/pojntfx/atmosfeed/pkg/persisters"
+	"github.com/redis/go-redis/v9"
 )
 
 const (
-	channelFeedInserted = "feed_inserted"
-	channelFeedUpdated  = "feed_updated"
-	channelFeedDeleted  = "feed_deleted"
+	channelFeedDeleted = "feed_deleted"
 
 	errPostgresForeignKeyViolation = "23503"
 
@@ -94,8 +94,9 @@ func main() {
 	}
 
 	pdsURL := flag.String("pds-url", "https://bsky.social", "PDS URL")
-
 	postgresURL := flag.String("postgres-url", "postgresql://postgres@localhost:5432/atmosfeed?sslmode=disable", "PostgreSQL URL")
+	redisURL := flag.String("redis-url", "redis://localhost:6379/0", "Redis URL")
+
 	laddr := flag.String("laddr", "localhost:1337", "Listen address")
 
 	classifierTimeout := flag.Duration("classifier-timeout", time.Second, "Amount of time after which to stop a classifer Scale function from running")
@@ -133,23 +134,131 @@ func main() {
 
 	log.Println("Connected to PDS", *pdsURL)
 
-	persister := persisters.NewPersister(*postgresURL)
+	options, err := redis.ParseURL(*redisURL)
+	if err != nil {
+		panic(err)
+	}
+
+	broker := redis.NewClient(options)
+	defer broker.Close()
+
+	log.Println("Connected to Redis")
+
+	persister := persisters.NewPersister(*postgresURL, broker)
 
 	if err := persister.Init(true); err != nil {
+		panic(err)
+	}
+
+	if _, err := broker.XGroupCreateMkStream(ctx, persisters.StreamFeedUpsert, persisters.StreamFeedUpsert, "$").Result(); err != nil && !strings.Contains(err.Error(), "BUSYGROUP Consumer Group name already exists") {
 		panic(err)
 	}
 
 	var classifierLock sync.Mutex
 	classifiers := map[string]*scale.Instance[*signature.Signature]{}
 
-	listener := pq.NewListener(*postgresURL, 10*time.Second, time.Minute, nil)
-	if err := listener.Listen(channelFeedInserted); err != nil {
-		panic(err)
-	}
+	go func() {
+		for {
+			streams, err := broker.XReadGroup(ctx, &redis.XReadGroupArgs{
+				Group:    persisters.StreamFeedUpsert,
+				Consumer: uuid.NewString(),
+				Streams:  []string{persisters.StreamFeedUpsert, ">"},
+				Block:    0,
+				Count:    10,
+			}).Result()
+			if err != nil {
+				log.Println("Could not subscribe to feed insert stream, skipping:", err)
 
-	if err := listener.Listen(channelFeedUpdated); err != nil {
-		panic(err)
-	}
+				continue
+			}
+
+			for _, stream := range streams {
+				for _, message := range stream.Messages {
+					rawDid, ok := message.Values["did"]
+					if !ok {
+						log.Println("Message did not contain DID, skipping")
+
+						continue
+					}
+
+					did, ok := rawDid.(string)
+					if !ok {
+						log.Println("Message contained invalid DID, skipping")
+
+						continue
+					}
+
+					rawRkey, ok := message.Values["rkey"]
+					if !ok {
+						log.Println("Message did not contain rkey, skipping")
+
+						continue
+					}
+
+					rkey, ok := rawRkey.(string)
+					if !ok {
+						log.Println("Message contained invalid rkey, skipping")
+
+						continue
+					}
+
+					if *verbose {
+						log.Println("Upserted feed", did, rkey)
+					}
+
+					func() {
+						classifierSource, err := persister.GetFeedClassifier(ctx, did, rkey)
+						if err != nil {
+							log.Println("Could not fetch new classifier, skipping:", err)
+
+							return
+						}
+
+						classifierPath := filepath.Join(*workingDirectory, classifiersPath, did, rkey)
+						if err := os.MkdirAll(filepath.Dir(classifierPath), os.ModePerm); err != nil {
+							log.Println("Could not prepare directory for classifier, skipping:", err)
+
+							return
+						}
+
+						classifierLock.Lock()
+						defer classifierLock.Unlock()
+
+						if err := os.WriteFile(classifierPath, classifierSource, os.ModePerm); err != nil {
+							log.Println("Could not write classifier to disk, skipping:", err)
+
+							return
+						}
+
+						fn, err := scalefunc.Read(classifierPath)
+						if err != nil {
+							log.Println("Could not read classifier, skipping:", err)
+
+							return
+						}
+
+						runtime, err := scale.New(scale.NewConfig(signature.New).WithFunction(fn))
+						if err != nil {
+							log.Println("Could not start classifier runtime, skipping:", err)
+
+							return
+						}
+
+						instance, err := runtime.Instance()
+						if err != nil {
+							log.Println("Could not start classifier instance, skipping:", err)
+
+							return
+						}
+
+						classifiers[path.Join(did, rkey)] = instance
+					}()
+				}
+			}
+		}
+	}()
+
+	listener := pq.NewListener(*postgresURL, 10*time.Second, time.Minute, nil)
 
 	if err := listener.Listen(channelFeedDeleted); err != nil {
 		panic(err)
@@ -160,66 +269,6 @@ func main() {
 			did, rkey := path.Dir(notification.Extra), path.Base(notification.Extra)
 
 			switch notification.Channel {
-			case channelFeedInserted:
-				if *verbose {
-					log.Println("Created feed", did, rkey)
-				}
-
-				fallthrough
-
-			case channelFeedUpdated:
-				if *verbose {
-					log.Println("Updated feed", did, rkey)
-				}
-
-				func() {
-					classifierSource, err := persister.GetFeedClassifier(ctx, did, rkey)
-					if err != nil {
-						log.Println("Could not fetch new classifier, skipping:", err)
-
-						return
-					}
-
-					classifierPath := filepath.Join(*workingDirectory, classifiersPath, did, rkey)
-					if err := os.MkdirAll(filepath.Dir(classifierPath), os.ModePerm); err != nil {
-						log.Println("Could not prepare directory for classifier, skipping:", err)
-
-						return
-					}
-
-					classifierLock.Lock()
-					defer classifierLock.Unlock()
-
-					if err := os.WriteFile(classifierPath, classifierSource, os.ModePerm); err != nil {
-						log.Println("Could not write classifier to disk, skipping:", err)
-
-						return
-					}
-
-					fn, err := scalefunc.Read(classifierPath)
-					if err != nil {
-						log.Println("Could not read classifier, skipping:", err)
-
-						return
-					}
-
-					runtime, err := scale.New(scale.NewConfig(signature.New).WithFunction(fn))
-					if err != nil {
-						log.Println("Could not start classifier runtime, skipping:", err)
-
-						return
-					}
-
-					instance, err := runtime.Instance()
-					if err != nil {
-						log.Println("Could not start classifier instance, skipping:", err)
-
-						return
-					}
-
-					classifiers[path.Join(did, rkey)] = instance
-				}()
-
 			case channelFeedDeleted:
 				if *verbose {
 					log.Println("Deleted feed", did, rkey)
