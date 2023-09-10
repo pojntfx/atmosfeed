@@ -7,7 +7,8 @@ docker rm -f atmosfeed-minio && docker run --name atmosfeed-minio -p 9000:9000 -
 
 make -j$(nproc) depend/sql && go run ./cmd/atmosfeed-manager
 
-make -j$(nproc) depend/sql && go run ./cmd/atmosfeed-worker
+make -j$(nproc) depend/sql && go run ./cmd/atmosfeed-worker --working-directory ~/.local/share/atmosfeed/var/lib/atmosfeed/worker-1
+make -j$(nproc) depend/sql && go run ./cmd/atmosfeed-worker --working-directory ~/.local/share/atmosfeed/var/lib/atmosfeed/worker-2
 
 make -j$(nproc) depend/classifier/questions
 

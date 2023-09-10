@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"flag"
 	"log"
@@ -91,167 +92,91 @@ func main() {
 	errs := make(chan error)
 
 	go func() {
-		for {
-			streams, err := broker.XReadGroup(ctx, &redis.XReadGroupArgs{
-				Group:    persisters.StreamFeedUpsert,
-				Consumer: uuid.NewString(),
-				Streams:  []string{persisters.StreamFeedUpsert, ">"},
-				Block:    0,
-				Count:    10,
-			}).Result()
-			if err != nil {
-				log.Println("Could not subscribe to feed upsert stream, skipping:", err)
+		streams := broker.Subscribe(ctx, persisters.TopicFeedUpsert)
+		defer streams.Close()
 
-				continue
-			}
+		messages := streams.Channel()
+		for message := range messages {
+			did, rkey := path.Dir(message.Payload), path.Base(message.Payload)
 
-			for _, stream := range streams {
-				for _, message := range stream.Messages {
-					rawDid, ok := message.Values["did"]
-					if !ok {
-						errs <- errMessageMissingDID
+			func() {
+				classifierSource, err := persister.GetFeedClassifier(ctx, did, rkey)
+				if err != nil {
+					log.Println("Could not fetch new classifier, skipping:", err)
 
-						return
-					}
-
-					did, ok := rawDid.(string)
-					if !ok {
-						errs <- errMessageInvalidDID
-
-						return
-					}
-
-					rawRkey, ok := message.Values["rkey"]
-					if !ok {
-						errs <- errMessageMissingRkey
-
-						return
-					}
-
-					rkey, ok := rawRkey.(string)
-					if !ok {
-						errs <- errMessageInvalidRkey
-
-						return
-					}
-
-					if *verbose {
-						log.Println("Upserted feed", did, rkey)
-					}
-
-					func() {
-						classifierSource, err := persister.GetFeedClassifier(ctx, did, rkey)
-						if err != nil {
-							log.Println("Could not fetch new classifier, skipping:", err)
-
-							return
-						}
-
-						classifierPath := filepath.Join(*workingDirectory, classifiersPath, did, rkey)
-						if err := os.MkdirAll(filepath.Dir(classifierPath), os.ModePerm); err != nil {
-							log.Println("Could not prepare directory for classifier, skipping:", err)
-
-							return
-						}
-
-						classifierLock.Lock()
-						defer classifierLock.Unlock()
-
-						if err := os.WriteFile(classifierPath, classifierSource, os.ModePerm); err != nil {
-							log.Println("Could not write classifier to disk, skipping:", err)
-
-							return
-						}
-
-						fn, err := scalefunc.Read(classifierPath)
-						if err != nil {
-							log.Println("Could not read classifier, skipping:", err)
-
-							return
-						}
-
-						runtime, err := scale.New(scale.NewConfig(signature.New).WithFunction(fn))
-						if err != nil {
-							log.Println("Could not start classifier runtime, skipping:", err)
-
-							return
-						}
-
-						instance, err := runtime.Instance()
-						if err != nil {
-							log.Println("Could not start classifier instance, skipping:", err)
-
-							return
-						}
-
-						classifiers[path.Join(did, rkey)] = instance
-					}()
+					return
 				}
-			}
+
+				classifierPath := filepath.Join(*workingDirectory, classifiersPath, did, rkey)
+				if err := os.MkdirAll(filepath.Dir(classifierPath), os.ModePerm); err != nil {
+					log.Println("Could not prepare directory for classifier, skipping:", err)
+
+					return
+				}
+
+				classifierLock.Lock()
+				defer classifierLock.Unlock()
+
+				if err := os.WriteFile(classifierPath, classifierSource, os.ModePerm); err != nil {
+					log.Println("Could not write classifier to disk, skipping:", err)
+
+					return
+				}
+
+				fn, err := scalefunc.Read(classifierPath)
+				if err != nil {
+					log.Println("Could not read classifier, skipping:", err)
+
+					return
+				}
+
+				runtime, err := scale.New(scale.NewConfig(signature.New).WithFunction(fn))
+				if err != nil {
+					log.Println("Could not start classifier runtime, skipping:", err)
+
+					return
+				}
+
+				instance, err := runtime.Instance()
+				if err != nil {
+					log.Println("Could not start classifier instance, skipping:", err)
+
+					return
+				}
+
+				classifiers[path.Join(did, rkey)] = instance
+
+				if *verbose {
+					log.Println("Upserted feed", did, rkey)
+				}
+			}()
 		}
 	}()
 
 	go func() {
-		for {
-			streams, err := broker.XReadGroup(ctx, &redis.XReadGroupArgs{
-				Group:    persisters.StreamFeedDelete,
-				Consumer: uuid.NewString(),
-				Streams:  []string{persisters.StreamFeedDelete, ">"},
-				Block:    0,
-				Count:    10,
-			}).Result()
-			if err != nil {
-				log.Println("Could not subscribe to feed delete stream, skipping:", err)
+		streams := broker.Subscribe(ctx, persisters.TopicFeedDelete)
+		defer streams.Close()
 
-				continue
-			}
+		messages := streams.Channel()
+		for message := range messages {
+			did, rkey := path.Dir(message.Payload), path.Base(message.Payload)
 
-			for _, stream := range streams {
-				for _, message := range stream.Messages {
-					rawDid, ok := message.Values["did"]
-					if !ok {
-						errs <- errMessageMissingDID
+			func() {
+				classifierLock.Lock()
+				defer classifierLock.Unlock()
 
-						return
-					}
+				if err := os.Remove(filepath.Join(*workingDirectory, classifiersPath, did, rkey)); err != nil {
+					log.Println("Could not remove classifier from disk, skipping:", err)
 
-					did, ok := rawDid.(string)
-					if !ok {
-						errs <- errMessageInvalidDID
-
-						return
-					}
-
-					rawRkey, ok := message.Values["rkey"]
-					if !ok {
-						errs <- errMessageMissingRkey
-
-						return
-					}
-
-					rkey, ok := rawRkey.(string)
-					if !ok {
-						errs <- errMessageInvalidRkey
-
-						return
-					}
-
-					if *verbose {
-						log.Println("Deleted feed", did, rkey)
-					}
-
-					classifierLock.Lock()
-					defer classifierLock.Unlock()
-
-					if err := os.Remove(filepath.Join(*workingDirectory, classifiersPath, did, rkey)); err != nil {
-						log.Println("Could not remove classifier from disk, skipping:", err)
-
-						continue
-					}
-
-					delete(classifiers, path.Join(did, rkey))
+					return
 				}
-			}
+
+				delete(classifiers, path.Join(did, rkey))
+
+				if *verbose {
+					log.Println("Deleted feed", did, rkey)
+				}
+			}()
 		}
 	}()
 
@@ -370,9 +295,9 @@ func main() {
 				Count:    10,
 			}).Result()
 			if err != nil {
-				log.Println("Could not subscribe to post insert stream, skipping:", err)
+				errs <- err
 
-				continue
+				return
 			}
 
 			for _, stream := range streams {
@@ -514,9 +439,9 @@ func main() {
 				Count:    10,
 			}).Result()
 			if err != nil {
-				log.Println("Could not subscribe to post like stream, skipping:", err)
+				errs <- err
 
-				continue
+				return
 			}
 
 			for _, stream := range streams {
@@ -554,7 +479,7 @@ func main() {
 						did,
 						rkey,
 					)
-					if err != nil {
+					if err != nil && !errors.Is(err, sql.ErrNoRows) {
 						log.Println("Could not like post, skipping:", err)
 
 						continue

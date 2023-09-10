@@ -2,10 +2,10 @@ package persisters
 
 import (
 	"context"
+	"path"
 	"time"
 
 	"github.com/pojntfx/atmosfeed/pkg/models"
-	"github.com/redis/go-redis/v9"
 )
 
 func (p *ManagerPersister) UpsertFeed(
@@ -22,13 +22,7 @@ func (p *ManagerPersister) UpsertFeed(
 		return err
 	}
 
-	if _, err := p.broker.XAdd(ctx, &redis.XAddArgs{
-		Stream: StreamFeedUpsert,
-		Values: map[string]string{
-			"did":  did,
-			"rkey": rkey,
-		},
-	}).Result(); err != nil {
+	if _, err := p.broker.Publish(ctx, TopicFeedUpsert, path.Join(did, rkey)).Result(); err != nil {
 		return err
 	}
 
@@ -71,13 +65,7 @@ func (p *ManagerPersister) DeleteFeed(
 		return err
 	}
 
-	if _, err := p.broker.XAdd(ctx, &redis.XAddArgs{
-		Stream: StreamFeedDelete,
-		Values: map[string]string{
-			"did":  did,
-			"rkey": rkey,
-		},
-	}).Result(); err != nil {
+	if _, err := p.broker.Publish(ctx, TopicFeedDelete, path.Join(did, rkey)).Result(); err != nil {
 		return err
 	}
 

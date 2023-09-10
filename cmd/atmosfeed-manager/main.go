@@ -222,7 +222,7 @@ func main() {
 						}
 
 						if *verbose {
-							log.Println("Published liked", post)
+							log.Println("Published like", post)
 						}
 					}
 				}

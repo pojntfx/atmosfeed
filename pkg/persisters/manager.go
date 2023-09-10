@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	StreamFeedUpsert = "feed/upsert"
-	StreamFeedDelete = "feed/delete"
+	TopicFeedUpsert = "feed/upsert"
+	TopicFeedDelete = "feed/delete"
 
 	StreamPostInsert = "post/insert"
 	StreamPostLike   = "post/like"
@@ -40,14 +40,6 @@ func NewManagerPersister(pgaddr string, broker *redis.Client) *ManagerPersister 
 }
 
 func (p *ManagerPersister) Init(ctx context.Context, migrate bool) error {
-	if _, err := p.broker.XGroupCreateMkStream(ctx, StreamFeedUpsert, StreamFeedUpsert, "$").Result(); err != nil && !strings.Contains(err.Error(), errBusyGroup) {
-		return err
-	}
-
-	if _, err := p.broker.XGroupCreateMkStream(ctx, StreamFeedDelete, StreamFeedDelete, "$").Result(); err != nil && !strings.Contains(err.Error(), errBusyGroup) {
-		return err
-	}
-
 	if _, err := p.broker.XGroupCreateMkStream(ctx, StreamPostInsert, StreamPostInsert, "$").Result(); err != nil && !strings.Contains(err.Error(), errBusyGroup) {
 		return err
 	}
