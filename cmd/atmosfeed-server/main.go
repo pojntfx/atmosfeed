@@ -42,8 +42,6 @@ import (
 )
 
 const (
-	channelFeedDeleted = "feed_deleted"
-
 	errPostgresForeignKeyViolation = "23503"
 
 	lexiconFeedPost = "app.bsky.feed.post"
@@ -146,13 +144,11 @@ func main() {
 
 	persister := persisters.NewPersister(*postgresURL, broker)
 
-	if err := persister.Init(true); err != nil {
+	if err := persister.Init(ctx, true); err != nil {
 		panic(err)
 	}
 
-	if _, err := broker.XGroupCreateMkStream(ctx, persisters.StreamFeedUpsert, persisters.StreamFeedUpsert, "$").Result(); err != nil && !strings.Contains(err.Error(), "BUSYGROUP Consumer Group name already exists") {
-		panic(err)
-	}
+	log.Println("Connected to PostgreSQL")
 
 	var classifierLock sync.Mutex
 	classifiers := map[string]*scale.Instance[*signature.Signature]{}
@@ -167,7 +163,7 @@ func main() {
 				Count:    10,
 			}).Result()
 			if err != nil {
-				log.Println("Could not subscribe to feed insert stream, skipping:", err)
+				log.Println("Could not subscribe to feed upsert stream, skipping:", err)
 
 				continue
 			}
@@ -258,39 +254,69 @@ func main() {
 		}
 	}()
 
-	listener := pq.NewListener(*postgresURL, 10*time.Second, time.Minute, nil)
-
-	if err := listener.Listen(channelFeedDeleted); err != nil {
-		panic(err)
-	}
-
 	go func() {
-		for notification := range listener.Notify {
-			did, rkey := path.Dir(notification.Extra), path.Base(notification.Extra)
+		for {
+			streams, err := broker.XReadGroup(ctx, &redis.XReadGroupArgs{
+				Group:    persisters.StreamFeedDelete,
+				Consumer: uuid.NewString(),
+				Streams:  []string{persisters.StreamFeedDelete, ">"},
+				Block:    0,
+				Count:    10,
+			}).Result()
+			if err != nil {
+				log.Println("Could not subscribe to feed delete stream, skipping:", err)
 
-			switch notification.Channel {
-			case channelFeedDeleted:
-				if *verbose {
-					log.Println("Deleted feed", did, rkey)
-				}
+				continue
+			}
 
-				func() {
+			for _, stream := range streams {
+				for _, message := range stream.Messages {
+					rawDid, ok := message.Values["did"]
+					if !ok {
+						log.Println("Message did not contain DID, skipping")
+
+						continue
+					}
+
+					did, ok := rawDid.(string)
+					if !ok {
+						log.Println("Message contained invalid DID, skipping")
+
+						continue
+					}
+
+					rawRkey, ok := message.Values["rkey"]
+					if !ok {
+						log.Println("Message did not contain rkey, skipping")
+
+						continue
+					}
+
+					rkey, ok := rawRkey.(string)
+					if !ok {
+						log.Println("Message contained invalid rkey, skipping")
+
+						continue
+					}
+
+					if *verbose {
+						log.Println("Deleted feed", did, rkey)
+					}
+
 					classifierLock.Lock()
 					defer classifierLock.Unlock()
 
 					if err := os.Remove(filepath.Join(*workingDirectory, classifiersPath, did, rkey)); err != nil {
 						log.Println("Could not remove classifier from disk, skipping:", err)
 
-						return
+						continue
 					}
 
 					delete(classifiers, path.Join(did, rkey))
-				}()
+				}
 			}
 		}
 	}()
-
-	log.Println("Connected to PostgreSQL")
 
 	lis, err := net.Listen("tcp", *laddr)
 	if err != nil {

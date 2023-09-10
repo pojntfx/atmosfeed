@@ -3,7 +3,9 @@ package persisters
 //go:generate sqlc -f ../../sqlc.yaml generate
 
 import (
+	"context"
 	"database/sql"
+	"strings"
 
 	"github.com/pojntfx/atmosfeed/pkg/migrations"
 	"github.com/pojntfx/atmosfeed/pkg/models"
@@ -13,6 +15,9 @@ import (
 
 const (
 	StreamFeedUpsert = "feed/upsert"
+	StreamFeedDelete = "feed/delete"
+
+	errBusyGroup = "BUSYGROUP Consumer Group name already exists"
 )
 
 type Persister struct {
@@ -31,7 +36,15 @@ func NewPersister(pgaddr string, broker *redis.Client) *Persister {
 	}
 }
 
-func (p *Persister) Init(migrate bool) error {
+func (p *Persister) Init(ctx context.Context, migrate bool) error {
+	if _, err := p.broker.XGroupCreateMkStream(ctx, StreamFeedUpsert, StreamFeedUpsert, "$").Result(); err != nil && !strings.Contains(err.Error(), errBusyGroup) {
+		return err
+	}
+
+	if _, err := p.broker.XGroupCreateMkStream(ctx, StreamFeedDelete, StreamFeedDelete, "$").Result(); err != nil && !strings.Contains(err.Error(), errBusyGroup) {
+		return err
+	}
+
 	var err error
 	p.db, err = sql.Open("postgres", p.pgaddr)
 	if err != nil {

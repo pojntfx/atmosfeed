@@ -14,6 +14,14 @@ func (p *Persister) UpsertFeed(
 	rkey string,
 	classifier []byte,
 ) error {
+	if err := p.queries.UpsertFeed(ctx, models.UpsertFeedParams{
+		Did:        did,
+		Rkey:       rkey,
+		Classifier: classifier,
+	}); err != nil {
+		return err
+	}
+
 	if _, err := p.broker.XAdd(ctx, &redis.XAddArgs{
 		Stream: StreamFeedUpsert,
 		Values: map[string]string{
@@ -24,11 +32,7 @@ func (p *Persister) UpsertFeed(
 		return err
 	}
 
-	return p.queries.UpsertFeed(ctx, models.UpsertFeedParams{
-		Did:        did,
-		Rkey:       rkey,
-		Classifier: classifier,
-	})
+	return nil
 }
 
 func (p *Persister) GetFeeds(
@@ -60,10 +64,24 @@ func (p *Persister) DeleteFeed(
 	did string,
 	rkey string,
 ) error {
-	return p.queries.DeleteFeed(ctx, models.DeleteFeedParams{
+	if err := p.queries.DeleteFeed(ctx, models.DeleteFeedParams{
 		Did:  did,
 		Rkey: rkey,
-	})
+	}); err != nil {
+		return err
+	}
+
+	if _, err := p.broker.XAdd(ctx, &redis.XAddArgs{
+		Stream: StreamFeedDelete,
+		Values: map[string]string{
+			"did":  did,
+			"rkey": rkey,
+		},
+	}).Result(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (p *Persister) UpsertFeedPost(
