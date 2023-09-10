@@ -5,7 +5,7 @@ OUTPUT_DIR ?= out
 DST ?=
 
 # Private variables
-obj = atmosfeed-server atmosfeed-client
+obj = atmosfeed-manager atmosfeed-worker atmosfeed-client
 signatures = classifier
 classifiers = everything questions german trending
 all: build

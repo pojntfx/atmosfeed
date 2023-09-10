@@ -17,10 +17,13 @@ const (
 	StreamFeedUpsert = "feed/upsert"
 	StreamFeedDelete = "feed/delete"
 
+	StreamPostInsert = "post/insert"
+	StreamPostLike   = "post/like"
+
 	errBusyGroup = "BUSYGROUP Consumer Group name already exists"
 )
 
-type Persister struct {
+type ManagerPersister struct {
 	pgaddr  string
 	queries *models.Queries
 	db      *sql.DB
@@ -28,20 +31,28 @@ type Persister struct {
 	broker *redis.Client
 }
 
-func NewPersister(pgaddr string, broker *redis.Client) *Persister {
-	return &Persister{
+func NewManagerPersister(pgaddr string, broker *redis.Client) *ManagerPersister {
+	return &ManagerPersister{
 		pgaddr: pgaddr,
 
 		broker: broker,
 	}
 }
 
-func (p *Persister) Init(ctx context.Context, migrate bool) error {
+func (p *ManagerPersister) Init(ctx context.Context, migrate bool) error {
 	if _, err := p.broker.XGroupCreateMkStream(ctx, StreamFeedUpsert, StreamFeedUpsert, "$").Result(); err != nil && !strings.Contains(err.Error(), errBusyGroup) {
 		return err
 	}
 
 	if _, err := p.broker.XGroupCreateMkStream(ctx, StreamFeedDelete, StreamFeedDelete, "$").Result(); err != nil && !strings.Contains(err.Error(), errBusyGroup) {
+		return err
+	}
+
+	if _, err := p.broker.XGroupCreateMkStream(ctx, StreamPostInsert, StreamPostInsert, "$").Result(); err != nil && !strings.Contains(err.Error(), errBusyGroup) {
+		return err
+	}
+
+	if _, err := p.broker.XGroupCreateMkStream(ctx, StreamPostLike, StreamPostLike, "$").Result(); err != nil && !strings.Contains(err.Error(), errBusyGroup) {
 		return err
 	}
 

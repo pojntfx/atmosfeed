@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -13,13 +12,9 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
-	"path/filepath"
-	"signature"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/bluesky-social/indigo/api/atproto"
@@ -31,22 +26,14 @@ import (
 	"github.com/bluesky-social/indigo/repomgr"
 	iutil "github.com/bluesky-social/indigo/util"
 	"github.com/bluesky-social/indigo/xrpc"
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/lib/pq"
-	"github.com/loopholelabs/scale"
-	"github.com/loopholelabs/scale/scalefunc"
 	"github.com/pojntfx/atmosfeed/pkg/models"
 	"github.com/pojntfx/atmosfeed/pkg/persisters"
 	"github.com/redis/go-redis/v9"
 )
 
 const (
-	errPostgresForeignKeyViolation = "23503"
-
 	lexiconFeedPost = "app.bsky.feed.post"
-
-	classifiersPath = "classifiers"
 )
 
 var (
@@ -86,10 +73,6 @@ type wellKnownService struct {
 }
 
 func main() {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		panic(err)
-	}
 
 	pdsURL := flag.String("pds-url", "https://bsky.social", "PDS URL")
 	postgresURL := flag.String("postgres-url", "postgresql://postgres@localhost:5432/atmosfeed?sslmode=disable", "PostgreSQL URL")
@@ -97,14 +80,11 @@ func main() {
 
 	laddr := flag.String("laddr", "localhost:1337", "Listen address")
 
-	classifierTimeout := flag.Duration("classifier-timeout", time.Second, "Amount of time after which to stop a classifer Scale function from running")
 	ttl := flag.Duration("ttl", time.Hour*6, "Maximum age of posts to return for a feed")
 	limit := flag.Int("limit", 100, "Maximum amount of posts to return for a feed")
 
 	feedGeneratorDID := flag.String("feed-generator-did", "did:web:atmosfeed-feeds.serveo.net", "DID of the feed generator (typically the hostname of the publicly reachable URL)")
 	feedGeneratorURL := flag.String("feed-generator-url", "https://atmosfeed-feeds.serveo.net", "Publicly reachable URL of the feed generator")
-
-	workingDirectory := flag.String("working-directory", filepath.Join(home, ".local", "share", "atmosfeed", "var", "lib", "atmosfeed"), "Working directory to use")
 
 	verbose := flag.Bool("verbose", false, "Whether to enable verbose logging")
 
@@ -112,10 +92,6 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	if err := os.RemoveAll(filepath.Join(*workingDirectory, classifiersPath)); err != nil {
-		panic(err)
-	}
 
 	pu, err := url.Parse(*pdsURL)
 	if err != nil {
@@ -142,181 +118,13 @@ func main() {
 
 	log.Println("Connected to Redis")
 
-	persister := persisters.NewPersister(*postgresURL, broker)
+	persister := persisters.NewManagerPersister(*postgresURL, broker)
 
 	if err := persister.Init(ctx, true); err != nil {
 		panic(err)
 	}
 
 	log.Println("Connected to PostgreSQL")
-
-	var classifierLock sync.Mutex
-	classifiers := map[string]*scale.Instance[*signature.Signature]{}
-
-	go func() {
-		for {
-			streams, err := broker.XReadGroup(ctx, &redis.XReadGroupArgs{
-				Group:    persisters.StreamFeedUpsert,
-				Consumer: uuid.NewString(),
-				Streams:  []string{persisters.StreamFeedUpsert, ">"},
-				Block:    0,
-				Count:    10,
-			}).Result()
-			if err != nil {
-				log.Println("Could not subscribe to feed upsert stream, skipping:", err)
-
-				continue
-			}
-
-			for _, stream := range streams {
-				for _, message := range stream.Messages {
-					rawDid, ok := message.Values["did"]
-					if !ok {
-						log.Println("Message did not contain DID, skipping")
-
-						continue
-					}
-
-					did, ok := rawDid.(string)
-					if !ok {
-						log.Println("Message contained invalid DID, skipping")
-
-						continue
-					}
-
-					rawRkey, ok := message.Values["rkey"]
-					if !ok {
-						log.Println("Message did not contain rkey, skipping")
-
-						continue
-					}
-
-					rkey, ok := rawRkey.(string)
-					if !ok {
-						log.Println("Message contained invalid rkey, skipping")
-
-						continue
-					}
-
-					if *verbose {
-						log.Println("Upserted feed", did, rkey)
-					}
-
-					func() {
-						classifierSource, err := persister.GetFeedClassifier(ctx, did, rkey)
-						if err != nil {
-							log.Println("Could not fetch new classifier, skipping:", err)
-
-							return
-						}
-
-						classifierPath := filepath.Join(*workingDirectory, classifiersPath, did, rkey)
-						if err := os.MkdirAll(filepath.Dir(classifierPath), os.ModePerm); err != nil {
-							log.Println("Could not prepare directory for classifier, skipping:", err)
-
-							return
-						}
-
-						classifierLock.Lock()
-						defer classifierLock.Unlock()
-
-						if err := os.WriteFile(classifierPath, classifierSource, os.ModePerm); err != nil {
-							log.Println("Could not write classifier to disk, skipping:", err)
-
-							return
-						}
-
-						fn, err := scalefunc.Read(classifierPath)
-						if err != nil {
-							log.Println("Could not read classifier, skipping:", err)
-
-							return
-						}
-
-						runtime, err := scale.New(scale.NewConfig(signature.New).WithFunction(fn))
-						if err != nil {
-							log.Println("Could not start classifier runtime, skipping:", err)
-
-							return
-						}
-
-						instance, err := runtime.Instance()
-						if err != nil {
-							log.Println("Could not start classifier instance, skipping:", err)
-
-							return
-						}
-
-						classifiers[path.Join(did, rkey)] = instance
-					}()
-				}
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			streams, err := broker.XReadGroup(ctx, &redis.XReadGroupArgs{
-				Group:    persisters.StreamFeedDelete,
-				Consumer: uuid.NewString(),
-				Streams:  []string{persisters.StreamFeedDelete, ">"},
-				Block:    0,
-				Count:    10,
-			}).Result()
-			if err != nil {
-				log.Println("Could not subscribe to feed delete stream, skipping:", err)
-
-				continue
-			}
-
-			for _, stream := range streams {
-				for _, message := range stream.Messages {
-					rawDid, ok := message.Values["did"]
-					if !ok {
-						log.Println("Message did not contain DID, skipping")
-
-						continue
-					}
-
-					did, ok := rawDid.(string)
-					if !ok {
-						log.Println("Message contained invalid DID, skipping")
-
-						continue
-					}
-
-					rawRkey, ok := message.Values["rkey"]
-					if !ok {
-						log.Println("Message did not contain rkey, skipping")
-
-						continue
-					}
-
-					rkey, ok := rawRkey.(string)
-					if !ok {
-						log.Println("Message contained invalid rkey, skipping")
-
-						continue
-					}
-
-					if *verbose {
-						log.Println("Deleted feed", did, rkey)
-					}
-
-					classifierLock.Lock()
-					defer classifierLock.Unlock()
-
-					if err := os.Remove(filepath.Join(*workingDirectory, classifiersPath, did, rkey)); err != nil {
-						log.Println("Could not remove classifier from disk, skipping:", err)
-
-						continue
-					}
-
-					delete(classifiers, path.Join(did, rkey))
-				}
-			}
-		}
-	}()
 
 	lis, err := net.Listen("tcp", *laddr)
 	if err != nil {
@@ -327,112 +135,6 @@ func main() {
 	log.Println("Listening on", lis.Addr())
 
 	mux := http.NewServeMux()
-
-	classifierSources, err := persister.GetFeeds(ctx)
-	if err != nil {
-		panic(err)
-	}
-
-	for _, classifierSource := range classifierSources {
-		func() {
-			classifierLock.Lock()
-			defer classifierLock.Unlock()
-
-			fn := &scalefunc.Schema{}
-			if err := fn.Decode(classifierSource.Classifier); err != nil {
-				log.Println("Could not parse classifier, skipping:", err)
-
-				return
-			}
-
-			runtime, err := scale.New(scale.NewConfig(signature.New).WithFunction(fn))
-			if err != nil {
-				log.Println("Could not start classifier runtime, skipping:", err)
-
-				return
-			}
-
-			instance, err := runtime.Instance()
-			if err != nil {
-				log.Println("Could not start classifier instance, skipping:", err)
-
-				return
-			}
-
-			classifiers[path.Join(classifierSource.Did, classifierSource.Rkey)] = instance
-		}()
-	}
-
-	log.Println("Fetched classifiers")
-
-	classify := func(post models.Post) error {
-
-		errs := make(chan error)
-
-		classifierLock.Lock()
-		defer classifierLock.Unlock()
-
-		var wg sync.WaitGroup
-		for feed, classifier := range classifiers {
-			wg.Add(1)
-
-			did, rkey := path.Dir(feed), path.Base(feed)
-
-			go func(feedDid, feedRkey string, classifier *scale.Instance[*signature.Signature]) {
-				defer wg.Done()
-
-				p := signature.NewPost()
-
-				p.Did = post.Did
-				p.Rkey = post.Rkey
-				p.Text = post.Text
-
-				p.Langs = post.Langs
-
-				p.CreatedAt = post.CreatedAt.Unix()
-				p.Likes = int64(post.Likes)
-
-				p.Reply = post.Reply
-
-				s := signature.New()
-				s.Context.Post = p
-
-				ctx, cancel := context.WithTimeout(context.Background(), *classifierTimeout)
-				defer cancel()
-
-				if err := classifier.Run(ctx, s); err != nil {
-					errs <- err
-
-					return
-				}
-
-				if s.Context.Weight >= 0 {
-					if err := persister.UpsertFeedPost(ctx, feedDid, feedRkey, p.Did, p.Rkey, int32(s.Context.Weight)); err != nil {
-						// We can safely ignore inserts if the feed that it should be inserted in was deleted
-						if err, ok := err.(*pq.Error); !ok || err.Code != pq.ErrorCode(errPostgresForeignKeyViolation) {
-							errs <- err
-						}
-
-						return
-					}
-				}
-			}(did, rkey, classifier)
-		}
-
-		go func() {
-			wg.Wait()
-
-			close(errs)
-		}()
-
-		for err := range errs {
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}
 
 	handlers := events.RepoStreamCallbacks{
 		RepoCommit: func(c *atproto.SyncSubscribeRepos_Commit) error {
@@ -473,40 +175,24 @@ func main() {
 					}
 
 					if post.LexiconTypeID == lexiconFeedPost {
-						createdAt, err := time.Parse(time.RFC3339Nano, post.CreatedAt)
-						if err != nil {
-							createdAt, err = time.Parse("2006-01-02T15:04:05.999999", post.CreatedAt) // For some reason, Bsky sometimes seems to not specify the timezone
-							if err != nil {
-
-								log.Println("Could not parse post date, skipping:", err)
-
-								continue l
-							}
-						}
-
-						post, err := persister.CreatePost(
-							ctx,
-							rp.RepoDid(),
-							path.Base(op.Path),
-							createdAt,
-							post.Text,
-							post.Reply != nil,
-							post.Langs,
-						)
-						if err != nil {
-							log.Println("Could not insert post, skipping:", err)
+						if _, err := broker.XAdd(ctx, &redis.XAddArgs{
+							Stream: persisters.StreamPostInsert,
+							Values: map[string]interface{}{
+								"did":       rp.RepoDid(),
+								"rkey":      path.Base(op.Path),
+								"createdAt": post.CreatedAt,
+								"text":      post.Text,
+								"reply":     post.Reply != nil,
+								"langs":     strings.Join(post.Langs, ","),
+							},
+						}).Result(); err != nil {
+							log.Println("Could not publish post, skipping:", err)
 
 							continue l
 						}
 
 						if *verbose {
-							log.Println("Created post", post)
-						}
-
-						if err := classify(post); err != nil {
-							log.Println("Could not classify post, skipping:", err)
-
-							continue l
+							log.Println("Published post", post)
 						}
 					} else if post.LexiconTypeID == "app.bsky.feed.like" {
 						var like bsky.FeedLike
@@ -523,25 +209,20 @@ func main() {
 							continue l
 						}
 
-						post, err := persister.LikePost(
-							ctx,
-							u.Did,
-							u.Rkey,
-						)
-						if err != nil {
-							if !errors.Is(err, sql.ErrNoRows) {
-								log.Println("Could not update post, skipping:", err)
-							}
+						if _, err := broker.XAdd(ctx, &redis.XAddArgs{
+							Stream: persisters.StreamPostLike,
+							Values: map[string]interface{}{
+								"did":  u.Did,
+								"rkey": u.Rkey,
+							},
+						}).Result(); err != nil {
+							log.Println("Could not publish like, skipping:", err)
 
 							continue l
 						}
 
 						if *verbose {
-							log.Println("Liked post", post)
-						}
-
-						if err := classify(post); err != nil {
-							return err
+							log.Println("Published liked", post)
 						}
 					}
 				}

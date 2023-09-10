@@ -7,7 +7,7 @@ import (
 	"github.com/pojntfx/atmosfeed/pkg/models"
 )
 
-func (p *Persister) CreatePost(
+func (p *WorkerPersister) CreatePost(
 	ctx context.Context,
 	did string,
 	rkey string,
@@ -26,7 +26,7 @@ func (p *Persister) CreatePost(
 	})
 }
 
-func (p *Persister) LikePost(
+func (p *WorkerPersister) LikePost(
 	ctx context.Context,
 	did string,
 	rkey string,

@@ -8,7 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func (p *Persister) UpsertFeed(
+func (p *ManagerPersister) UpsertFeed(
 	ctx context.Context,
 	did string,
 	rkey string,
@@ -35,20 +35,20 @@ func (p *Persister) UpsertFeed(
 	return nil
 }
 
-func (p *Persister) GetFeeds(
+func (p *WorkerPersister) GetFeeds(
 	ctx context.Context,
 ) ([]models.Feed, error) {
 	return p.queries.GetFeeds(ctx)
 }
 
-func (p *Persister) GetFeedsForDid(
+func (p *ManagerPersister) GetFeedsForDid(
 	ctx context.Context,
 	did string,
 ) ([]models.Feed, error) {
 	return p.queries.GetFeedsForDid(ctx, did)
 }
 
-func (p *Persister) GetFeedClassifier(
+func (p *WorkerPersister) GetFeedClassifier(
 	ctx context.Context,
 	did string,
 	rkey string,
@@ -59,7 +59,7 @@ func (p *Persister) GetFeedClassifier(
 	})
 }
 
-func (p *Persister) DeleteFeed(
+func (p *ManagerPersister) DeleteFeed(
 	ctx context.Context,
 	did string,
 	rkey string,
@@ -84,7 +84,7 @@ func (p *Persister) DeleteFeed(
 	return nil
 }
 
-func (p *Persister) UpsertFeedPost(
+func (p *WorkerPersister) UpsertFeedPost(
 	ctx context.Context,
 	feedDid string,
 	feedRkey string,
@@ -101,7 +101,7 @@ func (p *Persister) UpsertFeedPost(
 	})
 }
 
-func (p *Persister) GetFeedPosts(
+func (p *ManagerPersister) GetFeedPosts(
 	ctx context.Context,
 	feedDid string,
 	feedRkey string,
@@ -116,7 +116,7 @@ func (p *Persister) GetFeedPosts(
 	})
 }
 
-func (p *Persister) GetFeedPostsCursor(
+func (p *ManagerPersister) GetFeedPostsCursor(
 	ctx context.Context,
 	feedDid string,
 	feedRkey string,
