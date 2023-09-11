@@ -7,7 +7,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/http"
@@ -77,6 +76,7 @@ func main() {
 	pdsURL := flag.String("pds-url", "https://bsky.social", "PDS URL")
 	postgresURL := flag.String("postgres-url", "postgresql://postgres@localhost:5432/atmosfeed?sslmode=disable", "PostgreSQL URL")
 	redisURL := flag.String("redis-url", "redis://localhost:6379/0", "Redis URL")
+	s3URL := flag.String("s3-url", "http://minioadmin:minioadmin@localhost:9000?bucket=atmosfeed", "S3 URL")
 
 	laddr := flag.String("laddr", "localhost:1337", "Listen address")
 
@@ -118,13 +118,13 @@ func main() {
 
 	log.Println("Connected to Redis")
 
-	persister := persisters.NewManagerPersister(*postgresURL, broker)
+	persister := persisters.NewManagerPersister(*postgresURL, broker, *s3URL)
 
-	if err := persister.Init(ctx, true); err != nil {
+	if err := persister.Init(ctx); err != nil {
 		panic(err)
 	}
 
-	log.Println("Connected to PostgreSQL")
+	log.Println("Connected to PostgreSQL and S3")
 
 	lis, err := net.Listen("tcp", *laddr)
 	if err != nil {
@@ -444,12 +444,7 @@ func main() {
 					return
 				}
 
-				b, err := io.ReadAll(r.Body)
-				if err != nil {
-					panic(fmt.Errorf("%w: %v", errCouldNotReadClassifier, err))
-				}
-
-				if err := persister.UpsertFeed(ctx, session.Did, rkey, b); err != nil {
+				if err := persister.UpsertFeed(ctx, session.Did, rkey, r.Body); err != nil {
 					panic(fmt.Errorf("%w: %v", errCouldNotUpsertFeed, err))
 				}
 
