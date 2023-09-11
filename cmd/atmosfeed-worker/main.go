@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"flag"
+	"io"
 	"log"
 	"os"
 	"path"
@@ -52,6 +53,7 @@ func main() {
 
 	postgresURL := flag.String("postgres-url", "postgresql://postgres@localhost:5432/atmosfeed?sslmode=disable", "PostgreSQL URL")
 	redisURL := flag.String("redis-url", "redis://localhost:6379/0", "Redis URL")
+	s3URL := flag.String("s3-url", "http://minioadmin:minioadmin@localhost:9000?bucket=atmosfeed", "S3 URL")
 
 	classifierTimeout := flag.Duration("classifier-timeout", time.Second, "Amount of time after which to stop a classifer Scale function from running")
 
@@ -78,7 +80,7 @@ func main() {
 
 	log.Println("Connected to Redis")
 
-	persister := persisters.NewWorkerPersister(*postgresURL, broker)
+	persister := persisters.NewWorkerPersister(*postgresURL, broker, *s3URL)
 
 	if err := persister.Init(); err != nil {
 		panic(err)
@@ -88,6 +90,50 @@ func main() {
 
 	var classifierLock sync.Mutex
 	classifiers := map[string]*scale.Instance[*signature.Signature]{}
+
+	fetchClassifier := func(did, rkey string) error {
+		classifierSource, err := persister.GetFeedClassifier(ctx, did, rkey)
+		if err != nil {
+			return err
+		}
+
+		classifierPath := filepath.Join(*workingDirectory, classifiersPath, did, rkey)
+		if err := os.MkdirAll(filepath.Dir(classifierPath), os.ModePerm); err != nil {
+			return err
+		}
+
+		classifierLock.Lock()
+		defer classifierLock.Unlock()
+
+		f, err := os.OpenFile(classifierPath, os.O_RDWR|os.O_CREATE, os.ModePerm)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		if _, err := io.Copy(f, classifierSource); err != nil {
+			return err
+		}
+
+		fn, err := scalefunc.Read(classifierPath)
+		if err != nil {
+			return err
+		}
+
+		runtime, err := scale.New(scale.NewConfig(signature.New).WithFunction(fn))
+		if err != nil {
+			return err
+		}
+
+		instance, err := runtime.Instance()
+		if err != nil {
+			return err
+		}
+
+		classifiers[path.Join(did, rkey)] = instance
+
+		return nil
+	}
 
 	errs := make(chan error)
 
@@ -99,57 +145,15 @@ func main() {
 		for message := range messages {
 			did, rkey := path.Dir(message.Payload), path.Base(message.Payload)
 
-			func() {
-				classifierSource, err := persister.GetFeedClassifier(ctx, did, rkey)
-				if err != nil {
-					log.Println("Could not fetch new classifier, skipping:", err)
+			if err := fetchClassifier(did, rkey); err != nil {
+				log.Println("Could not fetch classifier, skipping:", err)
 
-					return
-				}
+				continue
+			}
 
-				classifierPath := filepath.Join(*workingDirectory, classifiersPath, did, rkey)
-				if err := os.MkdirAll(filepath.Dir(classifierPath), os.ModePerm); err != nil {
-					log.Println("Could not prepare directory for classifier, skipping:", err)
-
-					return
-				}
-
-				classifierLock.Lock()
-				defer classifierLock.Unlock()
-
-				if err := os.WriteFile(classifierPath, classifierSource, os.ModePerm); err != nil {
-					log.Println("Could not write classifier to disk, skipping:", err)
-
-					return
-				}
-
-				fn, err := scalefunc.Read(classifierPath)
-				if err != nil {
-					log.Println("Could not read classifier, skipping:", err)
-
-					return
-				}
-
-				runtime, err := scale.New(scale.NewConfig(signature.New).WithFunction(fn))
-				if err != nil {
-					log.Println("Could not start classifier runtime, skipping:", err)
-
-					return
-				}
-
-				instance, err := runtime.Instance()
-				if err != nil {
-					log.Println("Could not start classifier instance, skipping:", err)
-
-					return
-				}
-
-				classifiers[path.Join(did, rkey)] = instance
-
-				if *verbose {
-					log.Println("Upserted feed", did, rkey)
-				}
-			}()
+			if *verbose {
+				log.Println("Upserted classifier for feed", did, rkey)
+			}
 		}
 	}()
 
@@ -165,7 +169,7 @@ func main() {
 				classifierLock.Lock()
 				defer classifierLock.Unlock()
 
-				if err := os.Remove(filepath.Join(*workingDirectory, classifiersPath, did, rkey)); err != nil {
+				if err := os.RemoveAll(filepath.Join(*workingDirectory, classifiersPath, did, rkey)); err != nil {
 					log.Println("Could not remove classifier from disk, skipping:", err)
 
 					return
@@ -186,33 +190,17 @@ func main() {
 	}
 
 	for _, classifierSource := range classifierSources {
-		func() {
-			classifierLock.Lock()
-			defer classifierLock.Unlock()
+		did, rkey := classifierSource.Did, classifierSource.Rkey
 
-			fn := &scalefunc.Schema{}
-			if err := fn.Decode(classifierSource.Classifier); err != nil {
-				log.Println("Could not parse classifier, skipping:", err)
+		if err := fetchClassifier(did, rkey); err != nil {
+			log.Println("Could not fetch classifier, skipping:", err)
 
-				return
-			}
+			continue
+		}
 
-			runtime, err := scale.New(scale.NewConfig(signature.New).WithFunction(fn))
-			if err != nil {
-				log.Println("Could not start classifier runtime, skipping:", err)
-
-				return
-			}
-
-			instance, err := runtime.Instance()
-			if err != nil {
-				log.Println("Could not start classifier instance, skipping:", err)
-
-				return
-			}
-
-			classifiers[path.Join(classifierSource.Did, classifierSource.Rkey)] = instance
-		}()
+		if *verbose {
+			log.Println("Fetched classifier for feed", did, rkey)
+		}
 	}
 
 	log.Println("Fetched classifiers")
