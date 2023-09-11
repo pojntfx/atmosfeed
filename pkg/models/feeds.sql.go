@@ -26,25 +26,6 @@ func (q *Queries) DeleteFeed(ctx context.Context, arg DeleteFeedParams) error {
 	return err
 }
 
-const getFeedClassifier = `-- name: GetFeedClassifier :one
-select classifier
-from feeds
-where did = $1
-    and rkey = $2
-`
-
-type GetFeedClassifierParams struct {
-	Did  string
-	Rkey string
-}
-
-func (q *Queries) GetFeedClassifier(ctx context.Context, arg GetFeedClassifierParams) ([]byte, error) {
-	row := q.db.QueryRowContext(ctx, getFeedClassifier, arg.Did, arg.Rkey)
-	var classifier []byte
-	err := row.Scan(&classifier)
-	return classifier, err
-}
-
 const getFeedPosts = `-- name: GetFeedPosts :many
 select p.did,
     p.rkey
@@ -166,7 +147,7 @@ func (q *Queries) GetFeedPostsCursor(ctx context.Context, arg GetFeedPostsCursor
 }
 
 const getFeeds = `-- name: GetFeeds :many
-select did, rkey, classifier
+select did, rkey
 from feeds
 `
 
@@ -179,7 +160,7 @@ func (q *Queries) GetFeeds(ctx context.Context) ([]Feed, error) {
 	var items []Feed
 	for rows.Next() {
 		var i Feed
-		if err := rows.Scan(&i.Did, &i.Rkey, &i.Classifier); err != nil {
+		if err := rows.Scan(&i.Did, &i.Rkey); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -194,7 +175,7 @@ func (q *Queries) GetFeeds(ctx context.Context) ([]Feed, error) {
 }
 
 const getFeedsForDid = `-- name: GetFeedsForDid :many
-select did, rkey, classifier
+select did, rkey
 from feeds
 where did = $1
 `
@@ -208,7 +189,7 @@ func (q *Queries) GetFeedsForDid(ctx context.Context, did string) ([]Feed, error
 	var items []Feed
 	for rows.Next() {
 		var i Feed
-		if err := rows.Scan(&i.Did, &i.Rkey, &i.Classifier); err != nil {
+		if err := rows.Scan(&i.Did, &i.Rkey); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -223,20 +204,17 @@ func (q *Queries) GetFeedsForDid(ctx context.Context, did string) ([]Feed, error
 }
 
 const upsertFeed = `-- name: UpsertFeed :exec
-insert into feeds (did, rkey, classifier)
-values ($1, $2, $3) on conflict (did, rkey) do
-update
-set classifier = excluded.classifier
+insert into feeds (did, rkey)
+values ($1, $2) on conflict (did, rkey) do nothing
 `
 
 type UpsertFeedParams struct {
-	Did        string
-	Rkey       string
-	Classifier []byte
+	Did  string
+	Rkey string
 }
 
 func (q *Queries) UpsertFeed(ctx context.Context, arg UpsertFeedParams) error {
-	_, err := q.db.ExecContext(ctx, upsertFeed, arg.Did, arg.Rkey, arg.Classifier)
+	_, err := q.db.ExecContext(ctx, upsertFeed, arg.Did, arg.Rkey)
 	return err
 }
 

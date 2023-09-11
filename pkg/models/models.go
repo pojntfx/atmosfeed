@@ -9,9 +9,8 @@ import (
 )
 
 type Feed struct {
-	Did        string
-	Rkey       string
-	Classifier []byte
+	Did  string
+	Rkey string
 }
 
 type FeedPost struct {

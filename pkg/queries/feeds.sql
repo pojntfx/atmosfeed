@@ -1,8 +1,6 @@
 -- name: UpsertFeed :exec
-insert into feeds (did, rkey, classifier)
-values ($1, $2, $3) on conflict (did, rkey) do
-update
-set classifier = excluded.classifier;
+insert into feeds (did, rkey)
+values ($1, $2) on conflict (did, rkey) do nothing;
 -- name: GetFeeds :many
 select *
 from feeds;
@@ -10,11 +8,6 @@ from feeds;
 select *
 from feeds
 where did = $1;
--- name: GetFeedClassifier :one
-select classifier
-from feeds
-where did = $1
-    and rkey = $2;
 -- name: DeleteFeed :exec
 delete from feeds
 where did = $1

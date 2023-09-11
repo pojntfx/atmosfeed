@@ -2,7 +2,6 @@
 create table feeds (
     did text not null,
     rkey text not null,
-    classifier bytea not null,
     primary key (did, rkey)
 );
 create table feed_posts (

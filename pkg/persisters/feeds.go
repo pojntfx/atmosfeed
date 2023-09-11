@@ -2,9 +2,11 @@ package persisters
 
 import (
 	"context"
+	"io"
 	"path"
 	"time"
 
+	"github.com/minio/minio-go/v7"
 	"github.com/pojntfx/atmosfeed/pkg/models"
 )
 
@@ -12,12 +14,22 @@ func (p *ManagerPersister) UpsertFeed(
 	ctx context.Context,
 	did string,
 	rkey string,
-	classifier []byte,
+	classifier io.Reader,
 ) error {
+	if _, err := p.blobs.PutObject(
+		ctx,
+		p.bucket,
+		path.Join(did, rkey),
+		classifier,
+		-1,
+		minio.PutObjectOptions{},
+	); err != nil {
+		return err
+	}
+
 	if err := p.queries.UpsertFeed(ctx, models.UpsertFeedParams{
-		Did:        did,
-		Rkey:       rkey,
-		Classifier: classifier,
+		Did:  did,
+		Rkey: rkey,
 	}); err != nil {
 		return err
 	}
@@ -46,11 +58,13 @@ func (p *WorkerPersister) GetFeedClassifier(
 	ctx context.Context,
 	did string,
 	rkey string,
-) ([]byte, error) {
-	return p.queries.GetFeedClassifier(ctx, models.GetFeedClassifierParams{
-		Did:  did,
-		Rkey: rkey,
-	})
+) (io.Reader, error) {
+	return p.blobs.GetObject(
+		ctx,
+		p.bucket,
+		path.Join(did, rkey),
+		minio.GetObjectOptions{},
+	)
 }
 
 func (p *ManagerPersister) DeleteFeed(
@@ -62,6 +76,10 @@ func (p *ManagerPersister) DeleteFeed(
 		Did:  did,
 		Rkey: rkey,
 	}); err != nil {
+		return err
+	}
+
+	if err := p.blobs.RemoveObject(ctx, p.bucket, path.Join(did, rkey), minio.RemoveObjectOptions{}); err != nil {
 		return err
 	}
 
