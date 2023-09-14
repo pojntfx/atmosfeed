@@ -16,10 +16,11 @@ go run ./cmd/atmosfeed-client/ list --username felicitas.pojtinger.com --passwor
 go run ./cmd/atmosfeed-client/ apply --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey questions --feed-classifier out/local-questions-latest.scale
 go run ./cmd/atmosfeed-client/ publish --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey questions --feed-name 'Atmosfeed Questions' --feed-description 'Most popular questions on Bluesky in the last 24h (testing feed).' --feed-generator-did 'did:web:atmosfeed-feeds.serveo.net'
 go run ./cmd/atmosfeed-client/ list --username felicitas.pojtinger.com --password=${PASSWORD}
-go run ./cmd/atmosfeed-client/ --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey questions --delete
-go run ./cmd/atmosfeed-client/ --username felicitas.pojtinger.com --password=${PASSWORD} --list
+go run ./cmd/atmosfeed-client/ unpublish --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey questions
+go run ./cmd/atmosfeed-client/ delete --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey questions
+go run ./cmd/atmosfeed-client/ list --username felicitas.pojtinger.com --password=${PASSWORD}
 
-go run ./cmd/atmosfeed-client/ --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey questions --delete
-go run ./cmd/atmosfeed-client/ --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey german --delete
-go run ./cmd/atmosfeed-client/ --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey everything --delete
+go run ./cmd/atmosfeed-client/ delete --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey questions
+go run ./cmd/atmosfeed-client/ delete --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey german
+go run ./cmd/atmosfeed-client/ delete --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey everything
 ```

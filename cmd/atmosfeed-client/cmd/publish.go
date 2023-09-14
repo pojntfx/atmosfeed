@@ -22,7 +22,7 @@ const (
 
 var publishCmd = &cobra.Command{
 	Use:     "publish",
-	Aliases: []string{"a"},
+	Aliases: []string{"p"},
 	Short:   "Publish a feed to a Bluesky PDS",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := viper.BindPFlags(cmd.PersistentFlags()); err != nil {
