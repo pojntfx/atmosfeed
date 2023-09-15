@@ -11,7 +11,7 @@ RUN make
 
 # Extract the release
 RUN mkdir -p /out
-RUN cp out/atmosfeed-manager /out/atmosfeed-manager
+RUN cp out/atmosfeed-server /out/atmosfeed-server
 
 # Release container
 FROM debian:bookworm
@@ -21,6 +21,6 @@ RUN apt update
 RUN apt install -y ca-certificates
 
 # Add the release
-COPY --from=build /out/atmosfeed-manager /usr/local/bin/atmosfeed-manager
+COPY --from=build /out/atmosfeed-server /usr/local/bin/atmosfeed-server
 
-CMD /usr/local/bin/atmosfeed-manager
+CMD /usr/local/bin/atmosfeed-server

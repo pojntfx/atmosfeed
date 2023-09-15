@@ -21,18 +21,12 @@ jobs:
             flags: ""
             cmd: GOFLAGS="-short" ./Hydrunfile test
             dst: out/nonexistent
-          - id: atmosfeed-manager
+          - id: atmosfeed-server
             src: .
             os: golang:bookworm
             flags: ""
-            cmd: ./Hydrunfile go atmosfeed-manager
-            dst: out/atmosfeed-manager.*
-          - id: atmosfeed-worker
-            src: .
-            os: golang:bookworm
-            flags: ""
-            cmd: ./Hydrunfile go atmosfeed-worker
-            dst: out/atmosfeed-worker.*
+            cmd: ./Hydrunfile go atmosfeed-server
+            dst: out/atmosfeed-server.*
           - id: atmosfeed-client
             src: .
             os: golang:bookworm
