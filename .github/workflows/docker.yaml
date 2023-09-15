@@ -32,6 +32,9 @@ jobs:
           sudo rm -rf /opt/ghc
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Extract branch name
+        id: extract_branch
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
@@ -55,7 +58,7 @@ jobs:
           file: ${{ matrix.target.src }}/${{ matrix.target.file }}
           platforms: ${{ matrix.target.arch }}
           push: false
-          tags: ${{ matrix.target.image }}:unstable
+          tags: ${{ matrix.target.image }}:${{ steps.extract_branch.outputs.branch }}
           labels: ${{ steps.meta.outputs.labels }}
       - name: Push pre-release image to Docker Hub
         if: ${{ github.ref == 'refs/heads/main' }}
@@ -65,7 +68,7 @@ jobs:
           file: ${{ matrix.target.src }}/${{ matrix.target.file }}
           platforms: ${{ matrix.target.arch }}
           push: true
-          tags: ${{ matrix.target.image }}:unstable
+          tags: ${{ matrix.target.image }}:${{ steps.extract_branch.outputs.branch }}
           labels: ${{ steps.meta.outputs.labels }}
       - name: Push release image to Docker Hub
         if: startsWith(github.ref, 'refs/tags/v')
