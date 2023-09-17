@@ -31,9 +31,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DropdownMenuLink } from "@/components/ui/dropdown-menu-link";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Edit,
   Laptop,
@@ -50,13 +59,32 @@ import {
 import { useTheme } from "next-themes";
 import Image from "next/image";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { useLocalStorage } from "usehooks-ts";
+import * as z from "zod";
 import logoDark from "../assets/logo-dark.svg";
 import logoLight from "../assets/logo-light.svg";
+
+const appPasswordFormSchema = z.object({
+  appPassword: z.string().min(1, "App password is required"),
+});
 
 export default function Home() {
   const { setTheme } = useTheme();
   const [cardCount, setCardCount] = useState(1);
   const [createFeedDialogOpen, setCreateFeedDialogOpen] = useState(false);
+
+  const [appPassword, setAppPassword] = useLocalStorage(
+    "atmosfeed.apppassword",
+    ""
+  );
+
+  const appPasswordForm = useForm<z.infer<typeof appPasswordFormSchema>>({
+    resolver: zodResolver(appPasswordFormSchema),
+    defaultValues: {
+      appPassword: "",
+    },
+  });
 
   return (
     <>
@@ -75,6 +103,57 @@ export default function Home() {
           />
 
           <div className="flex content-center">
+            <Dialog open={appPassword === ""}>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Enter App Password</DialogTitle>
+                  <DialogDescription>
+                    Atmosfeed need an{" "}
+                    <a
+                      className="underline"
+                      href="https://bsky.app/settings/app-passwords"
+                      target="_blank"
+                    >
+                      app password
+                    </a>{" "}
+                    to work. It is only stored in your browser and never
+                    uploaded to our servers.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <Form {...appPasswordForm}>
+                  <form
+                    onSubmit={appPasswordForm.handleSubmit((v) =>
+                      setAppPassword(v.appPassword)
+                    )}
+                    className="space-y-8"
+                    id="appPassword"
+                  >
+                    <FormField
+                      control={appPasswordForm.control}
+                      name="appPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>App Password</FormLabel>
+
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </form>
+                </Form>
+
+                <DialogFooter>
+                  <Button type="submit" form="appPassword">
+                    <Plus className="sm:mr-2 h-4 w-4" /> Save
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
             <Dialog
               onOpenChange={(v) => setCreateFeedDialogOpen(v)}
               open={createFeedDialogOpen}
@@ -149,7 +228,7 @@ export default function Home() {
                 >
                   <User className="mr-2 h-4 w-4" /> Profile
                 </DropdownMenuLink>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setAppPassword("")}>
                   <LogOut className="mr-2 h-4 w-4" /> Logout
                 </DropdownMenuItem>
 
