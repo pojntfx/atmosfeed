@@ -64,6 +64,7 @@ import { useLocalStorage } from "usehooks-ts";
 import * as z from "zod";
 import logoDark from "../assets/logo-dark.svg";
 import logoLight from "../assets/logo-light.svg";
+import { useAPI } from "@/hooks/api";
 
 const setupFormSchema = z.object({
   service: z.string().min(1, "Service is required"),
@@ -78,7 +79,7 @@ export default function Home() {
 
   const [service, setService] = useLocalStorage(
     "atmosfeed.service",
-    "bsky.social"
+    "https://bsky.social"
   );
 
   const [username, setUsername] = useLocalStorage("atmosfeed.username", "");
@@ -96,6 +97,10 @@ export default function Home() {
       appPassword,
     },
   });
+
+  const { avatar } = useAPI(service, username, appPassword, () =>
+    setAppPassword("")
+  );
 
   return (
     <>
@@ -267,10 +272,7 @@ export default function Home() {
             <DropdownMenu>
               <DropdownMenuTrigger>
                 <Avatar>
-                  <AvatarImage
-                    src="https://github.com/pojntfx.png"
-                    alt="@pojntfx"
-                  />
+                  <AvatarImage src={avatar} alt={"Avatar of " + username} />
                   <AvatarFallback>AV</AvatarFallback>
                 </Avatar>
               </DropdownMenuTrigger>
