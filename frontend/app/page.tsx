@@ -65,7 +65,9 @@ import * as z from "zod";
 import logoDark from "../assets/logo-dark.svg";
 import logoLight from "../assets/logo-light.svg";
 
-const appPasswordFormSchema = z.object({
+const setupFormSchema = z.object({
+  service: z.string().min(1, "Service is required"),
+  username: z.string().min(1, "Username is required"),
   appPassword: z.string().min(1, "App password is required"),
 });
 
@@ -74,15 +76,24 @@ export default function Home() {
   const [cardCount, setCardCount] = useState(1);
   const [createFeedDialogOpen, setCreateFeedDialogOpen] = useState(false);
 
+  const [service, setService] = useLocalStorage(
+    "atmosfeed.service",
+    "bsky.social"
+  );
+
+  const [username, setUsername] = useLocalStorage("atmosfeed.username", "");
+
   const [appPassword, setAppPassword] = useLocalStorage(
     "atmosfeed.apppassword",
     ""
   );
 
-  const appPasswordForm = useForm<z.infer<typeof appPasswordFormSchema>>({
-    resolver: zodResolver(appPasswordFormSchema),
+  const setupForm = useForm<z.infer<typeof setupFormSchema>>({
+    resolver: zodResolver(setupFormSchema),
     defaultValues: {
-      appPassword: "",
+      service,
+      username,
+      appPassword,
     },
   });
 
@@ -106,9 +117,21 @@ export default function Home() {
             <Dialog open={appPassword === ""}>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                  <DialogTitle>Enter App Password</DialogTitle>
+                  <Image
+                    src={logoDark}
+                    alt="Atmosfeed Logo"
+                    className="h-10 w-auto logo-dark"
+                  />
+
+                  <Image
+                    src={logoLight}
+                    alt="Atmosfeed Logo"
+                    className="h-10 w-auto logo-light"
+                  />
+
+                  <DialogTitle className="pt-4">Sign In</DialogTitle>
                   <DialogDescription>
-                    Atmosfeed need an{" "}
+                    You need to sign in with an{" "}
                     <a
                       className="underline"
                       href="https://bsky.app/settings/app-passwords"
@@ -116,21 +139,53 @@ export default function Home() {
                     >
                       app password
                     </a>{" "}
-                    to work. It is only stored in your browser and never
-                    uploaded to our servers.
+                    in order to create feeds. Your password is only stored in
+                    this browser and never uploaded to our servers.
                   </DialogDescription>
                 </DialogHeader>
 
-                <Form {...appPasswordForm}>
+                <Form {...setupForm}>
                   <form
-                    onSubmit={appPasswordForm.handleSubmit((v) =>
-                      setAppPassword(v.appPassword)
-                    )}
-                    className="space-y-8"
-                    id="appPassword"
+                    onSubmit={setupForm.handleSubmit((v) => {
+                      setService(v.service);
+                      setUsername(v.username);
+                      setAppPassword(v.appPassword);
+                    })}
+                    className="space-y-4"
+                    id="setup"
                   >
                     <FormField
-                      control={appPasswordForm.control}
+                      control={setupForm.control}
+                      name="service"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Service</FormLabel>
+
+                          <FormControl>
+                            <Input type="text" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={setupForm.control}
+                      name="username"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Username</FormLabel>
+
+                          <FormControl>
+                            <Input type="text" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={setupForm.control}
                       name="appPassword"
                       render={({ field }) => (
                         <FormItem>
@@ -147,8 +202,8 @@ export default function Home() {
                 </Form>
 
                 <DialogFooter>
-                  <Button type="submit" form="appPassword">
-                    <Plus className="sm:mr-2 h-4 w-4" /> Save
+                  <Button type="submit" form="setup">
+                    Next
                   </Button>
                 </DialogFooter>
               </DialogContent>
