@@ -34,15 +34,15 @@ https://github.com/pojntfx/atmosfeed`,
 }
 
 func Execute() error {
-	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
-		return err
-	}
-
 	rootCmd.PersistentFlags().String(pdsURLFlag, "https://bsky.social", "PDS URL")
-	managerCmd.PersistentFlags().String(postgresURLFlag, "postgresql://postgres@localhost:5432/atmosfeed?sslmode=disable", "PostgreSQL URL")
+	rootCmd.PersistentFlags().String(postgresURLFlag, "postgresql://postgres@localhost:5432/atmosfeed?sslmode=disable", "PostgreSQL URL")
 	rootCmd.PersistentFlags().String(redisURLFlag, "redis://localhost:6379/0", "Redis URL")
 	rootCmd.PersistentFlags().String(s3URLFlag, "http://minioadmin:minioadmin@localhost:9000?bucket=atmosfeed", "S3 URL")
 	rootCmd.PersistentFlags().Bool(verboseFlag, false, "Whether to enable verbose logging")
+
+	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
+		return err
+	}
 
 	viper.AutomaticEnv()
 
