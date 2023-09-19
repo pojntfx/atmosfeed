@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +40,7 @@ import { DropdownMenuLink } from "@/components/ui/dropdown-menu-link";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -42,6 +49,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useAPI } from "@/hooks/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Edit,
@@ -64,12 +72,13 @@ import { useLocalStorage } from "usehooks-ts";
 import * as z from "zod";
 import logoDark from "../assets/logo-dark.svg";
 import logoLight from "../assets/logo-light.svg";
-import { useAPI } from "@/hooks/api";
 
 const setupFormSchema = z.object({
-  service: z.string().min(1, "Service is required"),
   username: z.string().min(1, "Username is required"),
-  appPassword: z.string().min(1, "App password is required"),
+  password: z.string().min(1, "App password is required"),
+
+  service: z.string().min(1, "Service is required"),
+  atmosfeedAPI: z.string().min(1, "Atmosfeed API is required"),
 });
 
 export default function Home() {
@@ -77,29 +86,31 @@ export default function Home() {
   const [cardCount, setCardCount] = useState(1);
   const [createFeedDialogOpen, setCreateFeedDialogOpen] = useState(false);
 
+  const [username, setUsername] = useLocalStorage("atmosfeed.username", "");
+  const [password, setPassword] = useLocalStorage("atmosfeed.password", "");
+
   const [service, setService] = useLocalStorage(
     "atmosfeed.service",
     "https://bsky.social"
   );
-
-  const [username, setUsername] = useLocalStorage("atmosfeed.username", "");
-
-  const [appPassword, setAppPassword] = useLocalStorage(
-    "atmosfeed.apppassword",
-    ""
+  const [atmosfeedAPI, setAtmosfeedAPI] = useLocalStorage(
+    "atmosfeed.atmosfeedURL",
+    "https://api.atmosfeed.pojtinger.com"
   );
 
   const setupForm = useForm<z.infer<typeof setupFormSchema>>({
     resolver: zodResolver(setupFormSchema),
     defaultValues: {
-      service,
       username,
-      appPassword,
+      password,
+
+      service,
+      atmosfeedAPI,
     },
   });
 
-  const { avatar } = useAPI(service, username, appPassword, () =>
-    setAppPassword("")
+  const { avatar } = useAPI(username, password, service, atmosfeedAPI, () =>
+    setPassword("")
   );
 
   return (
@@ -119,8 +130,8 @@ export default function Home() {
           />
 
           <div className="flex content-center">
-            <Dialog open={appPassword === ""}>
-              <DialogContent className="sm:max-w-[425px]">
+            <Dialog open={password === ""}>
+              <DialogContent className="sm:max-w-[425px]" disableClose>
                 <DialogHeader>
                   <Image
                     src={logoDark}
@@ -136,44 +147,23 @@ export default function Home() {
 
                   <DialogTitle className="pt-4">Sign In</DialogTitle>
                   <DialogDescription>
-                    You need to sign in with an{" "}
-                    <a
-                      className="underline"
-                      href="https://bsky.app/settings/app-passwords"
-                      target="_blank"
-                    >
-                      app password
-                    </a>{" "}
-                    in order to create feeds. Your password is only stored in
-                    this browser and never uploaded to our servers.
+                    Atmosfeed needs access to your Bluesky account in order to
+                    publish feeds on your behalf.
                   </DialogDescription>
                 </DialogHeader>
 
                 <Form {...setupForm}>
                   <form
                     onSubmit={setupForm.handleSubmit((v) => {
-                      setService(v.service);
                       setUsername(v.username);
-                      setAppPassword(v.appPassword);
+                      setPassword(v.password);
+
+                      setService(v.service);
+                      setAtmosfeedAPI(v.atmosfeedAPI);
                     })}
                     className="space-y-4"
                     id="setup"
                   >
-                    <FormField
-                      control={setupForm.control}
-                      name="service"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Service</FormLabel>
-
-                          <FormControl>
-                            <Input type="text" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
                     <FormField
                       control={setupForm.control}
                       name="username"
@@ -191,10 +181,23 @@ export default function Home() {
 
                     <FormField
                       control={setupForm.control}
-                      name="appPassword"
+                      name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>App Password</FormLabel>
+                          <FormLabel>Password</FormLabel>
+
+                          <FormDescription>
+                            You can use an{" "}
+                            <a
+                              className="underline"
+                              href="https://bsky.app/settings/app-passwords"
+                              target="_blank"
+                            >
+                              app password
+                            </a>
+                            . It is only stored in this browser and never
+                            uploaded to our servers.
+                          </FormDescription>
 
                           <FormControl>
                             <Input type="password" {...field} />
@@ -203,6 +206,53 @@ export default function Home() {
                         </FormItem>
                       )}
                     />
+
+                    <Accordion type="single" collapsible>
+                      <AccordionItem value="item-1">
+                        <AccordionTrigger>Advanced</AccordionTrigger>
+                        <AccordionContent>
+                          <FormField
+                            control={setupForm.control}
+                            name="service"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Service</FormLabel>
+
+                                <FormDescription>
+                                  The Bluesky service your account is hosted on;
+                                  most users don&apos;t need to change this.
+                                </FormDescription>
+
+                                <FormControl>
+                                  <Input type="text" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={setupForm.control}
+                            name="atmosfeedAPI"
+                            render={({ field }) => (
+                              <FormItem className="mt-4">
+                                <FormLabel>Atmosfeed API</FormLabel>
+
+                                <FormDescription>
+                                  The URL that Atmosfeed&apos;s API is hosted
+                                  on; most users don&apos;t need to change this.
+                                </FormDescription>
+
+                                <FormControl>
+                                  <Input type="text" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
                   </form>
                 </Form>
 
@@ -285,7 +335,7 @@ export default function Home() {
                 >
                   <User className="mr-2 h-4 w-4" /> Profile
                 </DropdownMenuLink>
-                <DropdownMenuItem onClick={() => setAppPassword("")}>
+                <DropdownMenuItem onClick={() => setPassword("")}>
                   <LogOut className="mr-2 h-4 w-4" /> Logout
                 </DropdownMenuItem>
 

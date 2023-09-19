@@ -3,16 +3,18 @@ import { useState } from "react";
 import { useAsyncEffect } from "use-async-effect";
 
 export const useAPI = (
-  service: string,
   username: string,
   appPassword: string,
+
+  service: string,
+  atmosfeedAPI: string,
 
   logout: () => void
 ) => {
   const [agent, setAgent] = useState<BskyAgent>();
 
   useAsyncEffect(async () => {
-    if (!service || !username || !appPassword) {
+    if (!username || !appPassword || !service) {
       return;
     }
 
@@ -32,7 +34,7 @@ export const useAPI = (
     }
 
     setAgent(agent);
-  }, [service, username, appPassword]);
+  }, [username, appPassword, service]);
 
   const [avatar, setAvatar] = useState("");
   useAsyncEffect(async () => {
