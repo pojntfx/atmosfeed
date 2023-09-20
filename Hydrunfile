@@ -15,6 +15,7 @@ if [ "$1" = "test" ]; then
     export PATH=$PATH:/opt/tinygo/bin
 
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    source ~/.bashrc
 
     # Configure Git
     git config --global --add safe.directory '*'
@@ -41,6 +42,7 @@ if [ "$1" = "go" ]; then
     export PATH=$PATH:/opt/tinygo/bin
 
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    source ~/.bashrc
 
     # Configure Git
     git config --global --add safe.directory '*'
