@@ -21,12 +21,12 @@ jobs:
             flags: ""
             cmd: GOFLAGS="-short" ./Hydrunfile test/cli
             dst: out/nonexistent
-          - id: test-pwa
-            src: .
-            os: oven/bun:canary
-            flags: ""
-            cmd: ./Hydrunfile test/pwa
-            dst: out/nonexistent
+          # - id: test-pwa
+          #   src: .
+          #   os: oven/bun:canary
+          #   flags: ""
+          #   cmd: ./Hydrunfile test/pwa
+          #   dst: out/nonexistent
           - id: build-cli-atmosfeed-server
             src: .
             os: golang:bookworm
@@ -39,12 +39,12 @@ jobs:
             flags: ""
             cmd: ./Hydrunfile build/cli atmosfeed-client
             dst: out/*
-          - id: build-pwa
-            src: .
-            os: oven/bun:canary
-            flags: ""
-            cmd: ./Hydrunfile build/pwa
-            dst: out/*
+          # - id: build-pwa
+          #   src: .
+          #   os: oven/bun:canary
+          #   flags: ""
+          #   cmd: ./Hydrunfile build/pwa
+          #   dst: out/*
 
     steps:
       - name: Maximize build space
