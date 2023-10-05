@@ -1,7 +1,7 @@
 use signature::types;
 
 pub fn scale(
-    ctx: Option<&mut types::Context>,
+    ctx: Option<types::Context>,
 ) -> Result<Option<types::Context>, Box<dyn std::error::Error>> {
     let mut changed_ctx = ctx.map(|c| c.clone());
 
@@ -15,5 +15,5 @@ pub fn scale(
         });
     }
 
-    signature::next(changed_ctx.as_mut())
+    signature::next(changed_ctx)
 }

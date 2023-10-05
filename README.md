@@ -4,8 +4,6 @@
 
 Create fully custom Bluesky feeds with Wasm modules, powered by Scale Functions.
 
-[![hydrun CI](https://github.com/pojntfx/atmosfeed/actions/workflows/hydrun.yaml/badge.svg)](https://github.com/pojntfx/atmosfeed/actions/workflows/hydrun.yaml)
-
 ## Overview
 
 🚧 This project is a work-in-progress! Instructions will be added as soon as it is usable. 🚧

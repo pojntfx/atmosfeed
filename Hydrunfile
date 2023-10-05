@@ -2,60 +2,108 @@
 
 set -e
 
-# Test
-if [ "$1" = "test" ]; then
+# Test CLI
+if [ "$1" = "test/cli" ]; then
     # Install native dependencies
     apt update
-    apt install -y curl
-    curl -fsSL https://dl.scale.sh | sh
+    apt install -y curl make git
 
+    # Install Scale
+    curl -fsSL https://dl.scale.sh | sh
+    source ~/.bashrc
+
+    # Install TinyGo
     curl -L -o /tmp/tinygo.tar.gz https://github.com/tinygo-org/tinygo/releases/download/v0.29.0/tinygo0.29.0.linux-amd64.tar.gz
     mkdir -p /opt
     tar xvzf /tmp/tinygo.tar.gz -C /opt
     export PATH=$PATH:/opt/tinygo/bin
 
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-    source ~/.bashrc
+    # Install Rust
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain nightly -y
+    source ~/.cargo/env
+    rustup target add wasm32-wasi
 
     # Configure Git
     git config --global --add safe.directory '*'
 
     # Generate dependencies
-    make depend
+    make depend/cli depend/signature depend/classifier
 
     # Run tests
-    make test
+    make test/cli
 
     exit 0
 fi
 
-# Go
-if [ "$1" = "go" ]; then
+# Test PWA
+if [ "$1" = "test/pwa" ]; then
     # Install native dependencies
     apt update
-    apt install -y curl make
-    curl -fsSL https://dl.scale.sh | sh
-
-    curl -L -o /tmp/tinygo.tar.gz https://github.com/tinygo-org/tinygo/releases/download/v0.29.0/tinygo0.29.0.linux-amd64.tar.gz
-    mkdir -p /opt
-    tar xvzf /tmp/tinygo.tar.gz -C /opt
-    export PATH=$PATH:/opt/tinygo/bin
-
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-    source ~/.bashrc
+    apt install -y make git
 
     # Configure Git
     git config --global --add safe.directory '*'
+
+    # Generate dependencies
+    make depend/pwa
+
+    # Run tests
+    make test/pwa
+
+    exit 0
+fi
+
+# Build CLI
+if [ "$1" = "build/cli" ]; then
+    # Install native dependencies
+    apt update
+    apt install -y curl make git
 
     # Install bagop
     curl -L -o /tmp/bagop "https://github.com/pojntfx/bagop/releases/latest/download/bagop.linux-$(uname -m)"
     install /tmp/bagop /usr/local/bin
 
+    # Install Scale
+    curl -fsSL https://dl.scale.sh | sh
+    source ~/.bashrc
+
+    # Install TinyGo
+    curl -L -o /tmp/tinygo.tar.gz https://github.com/tinygo-org/tinygo/releases/download/v0.29.0/tinygo0.29.0.linux-amd64.tar.gz
+    mkdir -p /opt
+    tar xvzf /tmp/tinygo.tar.gz -C /opt
+    export PATH=$PATH:/opt/tinygo/bin
+
+    # Install Rust
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain nightly -y
+    source ~/.cargo/env
+    rustup target add wasm32-wasi
+
+    # Configure Git
+    git config --global --add safe.directory '*'
+
     # Generate dependencies
-    make depend
+    make depend/cli depend/signature depend/classifier
 
     # Build
-    CGO_ENABLED=0 bagop -j "$(nproc)" -b "$2" -x '(android/*|ios/*|plan9/*|aix/*|linux/loong64|freebsd/riscv64|wasip1/wasm)' -p "make build/$2 DST=\$DST" -d out
+    CGO_ENABLED=0 bagop -j "$(nproc)" -b "$2" -x '(android/*|ios/*|plan9/*|aix/*|linux/loong64|freebsd/riscv64|wasip1/wasm)' -p "make build/cli/$2 DST=\$DST" -d out
+
+    exit 0
+fi
+
+# Build PWA
+if [ "$1" = "build/pwa" ]; then
+    # Install native dependencies
+    apt update
+    apt install -y make git
+
+    # Configure Git
+    git config --global --add safe.directory '*'
+
+    # Generate dependencies
+    make depend/pwa
+
+    # Build
+    make build/pwa
 
     exit 0
 fi

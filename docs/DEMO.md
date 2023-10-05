@@ -6,10 +6,12 @@ docker rm -f atmosfeed-postgres && docker run -d --name atmosfeed-postgres -p 54
 docker rm -f atmosfeed-redis && docker run --name atmosfeed-redis -p 6379:6379 -d redis
 docker rm -f atmosfeed-minio && docker run --name atmosfeed-minio -p 9000:9000 -d minio/minio server /data
 
-make -j$(nproc) depend/sql && go run ./cmd/atmosfeed-server manager
+make -j$(nproc) depend
 
-make -j$(nproc) depend/sql && go run ./cmd/atmosfeed-server worker --working-directory ~/.local/share/atmosfeed/var/lib/atmosfeed/worker-1
-make -j$(nproc) depend/sql && go run ./cmd/atmosfeed-server worker --working-directory ~/.local/share/atmosfeed/var/lib/atmosfeed/worker-2
+make -j$(nproc) depend/cli && go run ./cmd/atmosfeed-server manager
+
+make -j$(nproc) depend/cli && go run ./cmd/atmosfeed-server worker --working-directory ~/.local/share/atmosfeed/var/lib/atmosfeed/worker-1
+make -j$(nproc) depend/cli && go run ./cmd/atmosfeed-server worker --working-directory ~/.local/share/atmosfeed/var/lib/atmosfeed/worker-2
 
 ssh -R atmosfeed-feeds.serveo.net:80:localhost:1337 serveo.net
 
@@ -40,4 +42,7 @@ go run ./cmd/atmosfeed-client/ publish --username felicitas.pojtinger.com --pass
 go run ./cmd/atmosfeed-client/ delete --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey questions
 go run ./cmd/atmosfeed-client/ delete --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey german
 go run ./cmd/atmosfeed-client/ delete --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey everything
+
+cd frontend
+bun dev # Now visit http://localhost:3000 to open the frontend and sign in
 ```

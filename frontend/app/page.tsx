@@ -6,14 +6,20 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -21,12 +27,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuPortal,
@@ -47,21 +51,23 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { PrivacyPolicy } from "@/components/ui/privacy-policy";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/components/ui/use-toast";
 import { useAPI } from "@/hooks/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  Edit,
+  Database,
+  DownloadCloud,
   Laptop,
+  Loader,
+  LogIn,
   LogOut,
   Moon,
   MoonStar,
-  MoreVertical,
-  Plus,
-  Rocket,
   Sun,
-  Trash,
+  TrashIcon,
   User,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -70,8 +76,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useLocalStorage } from "usehooks-ts";
 import * as z from "zod";
-import logoDark from "../assets/logo-dark.svg";
-import logoLight from "../assets/logo-light.svg";
+import logoDark from "../assets/logo-dark.png";
+import logoLight from "../assets/logo-light.png";
 
 const setupFormSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -79,23 +85,26 @@ const setupFormSchema = z.object({
 
   service: z.string().min(1, "Service is required"),
   atmosfeedAPI: z.string().min(1, "Atmosfeed API is required"),
+
+  acceptedPrivacyPolicy: z.literal<boolean>(true),
 });
 
 export default function Home() {
   const { setTheme } = useTheme();
-  const [cardCount, setCardCount] = useState(1);
-  const [createFeedDialogOpen, setCreateFeedDialogOpen] = useState(false);
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [privacyPolicyDialogOpen, setPrivacyPolicyDialogOpen] = useState(false);
 
   const [username, setUsername] = useLocalStorage("atmosfeed.username", "");
   const [password, setPassword] = useLocalStorage("atmosfeed.password", "");
 
   const [service, setService] = useLocalStorage(
     "atmosfeed.service",
-    "https://bsky.social"
+    process.env.ATMOSFEED_SERVICE_DEFAULT || "https://bsky.social"
   );
   const [atmosfeedAPI, setAtmosfeedAPI] = useLocalStorage(
     "atmosfeed.atmosfeedURL",
-    "https://api.atmosfeed.pojtinger.com"
+    process.env.ATMOSFEED_API_DEFAULT || "https://manager.atmosfeed.p8.lu"
   );
 
   const setupForm = useForm<z.infer<typeof setupFormSchema>>({
@@ -106,273 +115,167 @@ export default function Home() {
 
       service,
       atmosfeedAPI,
+
+      acceptedPrivacyPolicy: false,
     },
   });
 
-  const { avatar } = useAPI(username, password, service, atmosfeedAPI, () =>
-    setPassword("")
+  const {
+    avatar,
+    did,
+    signedIn,
+
+    deleteData,
+
+    loading,
+    logout,
+  } = useAPI(
+    username,
+    password,
+    service,
+    atmosfeedAPI,
+    () => setPassword(""),
+    (err, loggedOut) =>
+      loggedOut
+        ? toast({
+            title: "You Have Been Logged Out",
+            description: `Authentication with Bluesky failed and you have been logged out. The error is: "${err?.message}"`,
+          })
+        : toast({
+            title: "An Error Occured",
+            description: `An error could not be handled. The error is: "${err?.message}"`,
+          })
   );
+
+  const { toast } = useToast();
 
   return (
     <>
       <div className="fixed w-full">
         <header className="container flex justify-between items-center py-6">
-          <Image
-            src={logoDark}
-            alt="Atmosfeed Logo"
-            className="h-10 w-auto mr-4 logo-dark"
-          />
+          {signedIn && (
+            <Image
+              src={logoDark}
+              alt="Atmosfeed Logo"
+              className="h-10 w-auto mr-4 logo-dark"
+            />
+          )}
 
-          <Image
-            src={logoLight}
-            alt="Atmosfeed Logo"
-            className="h-10 w-auto mr-4 logo-light"
-          />
+          {signedIn && (
+            <Image
+              src={logoLight}
+              alt="Atmosfeed Logo"
+              className="h-10 w-auto mr-4 logo-light"
+            />
+          )}
 
-          <div className="flex content-center">
-            <Dialog open={password === ""}>
-              <DialogContent className="sm:max-w-[425px]" disableClose>
-                <DialogHeader>
-                  <Image
-                    src={logoDark}
-                    alt="Atmosfeed Logo"
-                    className="h-10 w-auto logo-dark"
-                  />
-
-                  <Image
-                    src={logoLight}
-                    alt="Atmosfeed Logo"
-                    className="h-10 w-auto logo-light"
-                  />
-
-                  <DialogTitle className="pt-4">Sign In</DialogTitle>
-                  <DialogDescription>
-                    Atmosfeed needs access to your Bluesky account in order to
-                    publish feeds on your behalf.
-                  </DialogDescription>
-                </DialogHeader>
-
-                <Form {...setupForm}>
-                  <form
-                    onSubmit={setupForm.handleSubmit((v) => {
-                      setUsername(v.username);
-                      setPassword(v.password);
-
-                      setService(v.service);
-                      setAtmosfeedAPI(v.atmosfeedAPI);
-                    })}
-                    className="space-y-4"
-                    id="setup"
+          {signedIn && (
+            <div className="flex content-center">
+              <DropdownMenu>
+                <DropdownMenuTrigger>
+                  <Avatar>
+                    <AvatarImage src={avatar} alt={"Avatar of " + username} />
+                    <AvatarFallback>AV</AvatarFallback>
+                  </Avatar>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLink
+                    href={`https://bsky.app/profile/${username}`}
+                    target="_blank"
                   >
-                    <FormField
-                      control={setupForm.control}
-                      name="username"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Username</FormLabel>
+                    <User className="mr-2 h-4 w-4" /> Profile
+                  </DropdownMenuLink>
+                  <DropdownMenuItem onClick={() => logout()}>
+                    <LogOut className="mr-2 h-4 w-4" /> Logout
+                  </DropdownMenuItem>
 
-                          <FormControl>
-                            <Input type="text" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Database className="mr-2 h-4 w-4" />
+                      <span className="mr-2">Your Data</span>
+                    </DropdownMenuSubTrigger>
 
-                    <FormField
-                      control={setupForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            const data = {
+                              did,
+                              service,
+                            };
 
-                          <FormDescription>
-                            You can use an{" "}
-                            <a
-                              className="underline"
-                              href="https://bsky.app/settings/app-passwords"
-                              target="_blank"
-                            >
-                              app password
-                            </a>
-                            . It is only stored in this browser and never
-                            uploaded to our servers.
-                          </FormDescription>
+                            const blob = new Blob(
+                              [JSON.stringify(data, null, 2)],
+                              { type: "application/json" }
+                            );
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
 
-                          <FormControl>
-                            <Input type="password" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                            a.href = url;
+                            a.download = "atmosfeed.json";
+                            a.click();
 
-                    <Accordion type="single" collapsible>
-                      <AccordionItem value="item-1">
-                        <AccordionTrigger>Advanced</AccordionTrigger>
-                        <AccordionContent>
-                          <FormField
-                            control={setupForm.control}
-                            name="service"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Service</FormLabel>
+                            URL.revokeObjectURL(url);
 
-                                <FormDescription>
-                                  The Bluesky service your account is hosted on;
-                                  most users don&apos;t need to change this.
-                                </FormDescription>
+                            toast({
+                              title: "Data Downloaded Successfully",
+                              description:
+                                "Your data has successfully been downloaded to your system.",
+                            });
+                          }}
+                        >
+                          <DownloadCloud className="mr-2 h-4 w-4" />
+                          <span>Download your Data</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setDeleteDialogOpen((v) => !v)}
+                        >
+                          <TrashIcon className="mr-2 h-4 w-4" />
+                          <span>Delete your Data</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
 
-                                <FormControl>
-                                  <Input type="text" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={setupForm.control}
-                            name="atmosfeedAPI"
-                            render={({ field }) => (
-                              <FormItem className="mt-4">
-                                <FormLabel>Atmosfeed API</FormLabel>
-
-                                <FormDescription>
-                                  The URL that Atmosfeed&apos;s API is hosted
-                                  on; most users don&apos;t need to change this.
-                                </FormDescription>
-
-                                <FormControl>
-                                  <Input type="text" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  </form>
-                </Form>
-
-                <DialogFooter>
-                  <Button type="submit" form="setup">
-                    Next
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog
-              onOpenChange={(v) => setCreateFeedDialogOpen(v)}
-              open={createFeedDialogOpen}
-            >
-              <DialogTrigger asChild>
-                <Button
-                  className="mr-4"
-                  onClick={() => setCreateFeedDialogOpen((v) => !v)}
-                >
-                  <Plus className="sm:mr-2 h-4 w-4" />{" "}
-                  <span className="hidden sm:inline">Create Feed</span>
-                </Button>
-              </DialogTrigger>
-
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Create Feed</DialogTitle>
-                  <DialogDescription>
-                    Build a new custom Bluesky feed.
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="grid gap-4 py-4">
-                  <div className="grid w-full gap-4">
-                    <Label htmlFor="title">Title</Label>
-                    <Input id="title" value="Atmosfeed Trending" />
-                  </div>
-
-                  <div className="grid w-full gap-4">
-                    <Label htmlFor="key">Key</Label>
-                    <Input id="key" value="trending" />
-                  </div>
-
-                  <div className="grid w-full gap-4">
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      placeholder="Most popular trending posts on Bluesky in the last 24h (testing feed)"
-                    />
-                  </div>
-                </div>
-
-                <DialogFooter>
-                  <Button
-                    onClick={() => {
-                      setCardCount((v) => v + 1);
-                      setCreateFeedDialogOpen((v) => !v);
-                    }}
-                  >
-                    <Plus className="sm:mr-2 h-4 w-4" /> Create Feed
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger>
-                <Avatar>
-                  <AvatarImage src={avatar} alt={"Avatar of " + username} />
-                  <AvatarFallback>AV</AvatarFallback>
-                </Avatar>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuLink
-                  href="https://bsky.app/profile/felicitas.pojtinger.com"
-                  target="_blank"
-                >
-                  <User className="mr-2 h-4 w-4" /> Profile
-                </DropdownMenuLink>
-                <DropdownMenuItem onClick={() => setPassword("")}>
-                  <LogOut className="mr-2 h-4 w-4" /> Logout
-                </DropdownMenuItem>
-
-                <DropdownMenuLabel>Settings</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <MoonStar className="mr-2 h-4 w-4" />
-                    <span>Theme</span>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent>
-                      <DropdownMenuItem onClick={() => setTheme("light")}>
-                        <Sun className="mr-2 h-4 w-4" /> Light
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setTheme("dark")}>
-                        <Moon className="mr-2 h-4 w-4" /> Dark
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setTheme("system")}>
-                        <Laptop className="mr-2 h-4 w-4" /> System
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                  <DropdownMenuLabel>Settings</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <MoonStar className="mr-2 h-4 w-4" />
+                      <span>Theme</span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuItem onClick={() => setTheme("light")}>
+                          <Sun className="mr-2 h-4 w-4" /> Light
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTheme("dark")}>
+                          <Moon className="mr-2 h-4 w-4" /> Dark
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTheme("system")}>
+                          <Laptop className="mr-2 h-4 w-4" /> System
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
         </header>
 
-        <div className="gradient-blur">
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-        </div>
+        {signedIn && (
+          <div className="gradient-blur">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+          </div>
+        )}
 
         <div className="gradient-blur-bottom">
           <div></div>
@@ -386,78 +289,52 @@ export default function Home() {
 
       <div className="content">
         <main className="flex-grow flex flex-col justify-center items-center gap-2 container">
-          {[...Array(cardCount).keys()].map((_, i) => (
-            <Card
-              className="w-full max-w-2xl flex items-center justify-between"
-              key={i}
-            >
-              <CardHeader>
-                <div className="text-2xl font-semibold leading-none tracking-tight flex items-center justify-between">
-                  <div>Atmosfeed Trending {i + 1}</div>
+          {signedIn ? (
+            <>
+              <Card className="max-w-full w-[500px]">
+                <CardHeader>
+                  <CardTitle>Configuration</CardTitle>
+                </CardHeader>
+              </Card>
+            </>
+          ) : (
+            <>
+              <Image
+                src={logoDark}
+                alt="Atmosfeed Logo"
+                className="h-20 w-auto logo-dark"
+              />
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild className="sm:hidden">
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuGroup>
-                        <DropdownMenuItem>
-                          <Edit className="mr-2 h-4 w-4" /> Edit
-                        </DropdownMenuItem>
+              <Image
+                src={logoLight}
+                alt="Atmosfeed Logo"
+                className="h-20 w-auto logo-light"
+              />
 
-                        <DropdownMenuItem>
-                          <Rocket className="mr-2 h-4 w-4" /> Publish
-                        </DropdownMenuItem>
+              <h2 className="text-2xl mt-4 my-5 text-center">
+                Create fully custom Bluesky feeds with Wasm modules, powered by
+                Scale Functions.
+              </h2>
 
-                        <DropdownMenuItem>
-                          <Trash className="mr-2 h-4 w-4" /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuGroup>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <CardDescription>
-                  <code>trending-{i + 1}</code>
-                </CardDescription>
-                <CardDescription>
-                  Most popular trending posts on Bluesky in the last 24h
-                  (testing feed)
-                </CardDescription>
-              </CardHeader>
-
-              <CardFooter className="py-0 pr-4 hidden sm:flex">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreVertical />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuGroup>
-                      <DropdownMenuItem>
-                        <Edit className="mr-2 h-4 w-4" /> Edit
-                      </DropdownMenuItem>
-
-                      <DropdownMenuItem>
-                        <Rocket className="mr-2 h-4 w-4" /> Publish
-                      </DropdownMenuItem>
-
-                      <DropdownMenuItem>
-                        <Trash className="mr-2 h-4 w-4" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </CardFooter>
-            </Card>
-          ))}
+              <Button
+                disabled={loading}
+                onClick={() => setLoginDialogOpen(true)}
+                className="mb-10"
+              >
+                {loading ? (
+                  <Loader className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <LogIn className="mr-2 h-4 w-4" />
+                )}{" "}
+                Login with Bluesky
+              </Button>
+            </>
+          )}
         </main>
       </div>
 
-      <div className="fixed bottom-0 w-full">
-        <footer className="flex justify-between items-center py-6 container">
+      <div className="fixed bottom-0 w-full overflow-x-auto">
+        <footer className="flex justify-between items-center py-6 container pr-0">
           <a
             href="https://github.com/pojntfx/atmosfeed"
             target="_blank"
@@ -466,15 +343,247 @@ export default function Home() {
             © 2023 Felicitas Pojtinger
           </a>
 
-          <a
-            href="https://felicitas.pojtinger.com/imprint"
-            target="_blank"
-            className="hover:underline"
-          >
-            Imprint
-          </a>
+          <div className="flex h-5 items-center space-x-4 text-sm pr-8">
+            <Button
+              variant="link"
+              className="p-0 h-auto font-normal"
+              onClick={() => setPrivacyPolicyDialogOpen((v) => !v)}
+            >
+              Privacy
+            </Button>
+
+            <Separator orientation="vertical" />
+
+            <a
+              href="https://felicitas.pojtinger.com/imprint"
+              target="_blank"
+              className="hover:underline"
+            >
+              Imprint
+            </a>
+          </div>
         </footer>
       </div>
+
+      <Dialog
+        onOpenChange={(v) => setLoginDialogOpen(v)}
+        open={loginDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <Image
+              src={logoDark}
+              alt="Atmosfeed Logo"
+              className="h-10 object-contain logo-dark"
+            />
+
+            <Image
+              src={logoLight}
+              alt="Atmosfeed Logo"
+              className="h-10 object-contain logo-light"
+            />
+
+            <DialogTitle className="pt-4">Login</DialogTitle>
+            <DialogDescription>
+              Atmosfeed needs access to your Bluesky account in order to publish
+              feeds on your behalf.
+            </DialogDescription>
+          </DialogHeader>
+
+          <Form {...setupForm}>
+            <form
+              onSubmit={setupForm.handleSubmit((v) => {
+                setUsername(v.username);
+                setPassword(v.password);
+
+                setService(v.service);
+                setAtmosfeedAPI(v.atmosfeedAPI);
+
+                setLoginDialogOpen(false);
+              })}
+              className="space-y-4"
+              id="setup"
+            >
+              <FormField
+                control={setupForm.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+
+                    <FormControl>
+                      <Input type="text" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={setupForm.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+
+                    <FormDescription>
+                      You can use an{" "}
+                      <a
+                        className="underline"
+                        href="https://bsky.app/settings/app-passwords"
+                        target="_blank"
+                      >
+                        app password
+                      </a>
+                      . It is only stored in this browser and never uploaded to
+                      our servers.
+                    </FormDescription>
+
+                    <FormControl>
+                      <Input type="password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={setupForm.control}
+                name="acceptedPrivacyPolicy"
+                render={({ field }) => {
+                  const { value, onChange, ...rest } = field;
+
+                  return (
+                    <FormItem className="items-top flex space-x-2 space-y-0 items-center">
+                      <FormControl>
+                        <Checkbox
+                          checked={value}
+                          onCheckedChange={onChange}
+                          {...rest}
+                        />
+                      </FormControl>
+
+                      <div className="grid gap-1.5 leading-none">
+                        <FormLabel className="text-sm font-medium leading-none">
+                          I have read and agree to the{" "}
+                          <Button
+                            variant="link"
+                            className="p-0 underline h-auto font-normal"
+                            onClick={() =>
+                              setPrivacyPolicyDialogOpen((v) => !v)
+                            }
+                          >
+                            privacy policy
+                          </Button>
+                        </FormLabel>
+                      </div>
+                    </FormItem>
+                  );
+                }}
+              />
+
+              <Accordion type="single" collapsible>
+                <AccordionItem value="item-1">
+                  <AccordionTrigger>Advanced</AccordionTrigger>
+                  <AccordionContent>
+                    <FormField
+                      control={setupForm.control}
+                      name="service"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Service</FormLabel>
+
+                          <FormDescription>
+                            The Bluesky service your account is hosted on; most
+                            users don&apos;t need to change this.
+                          </FormDescription>
+
+                          <FormControl>
+                            <Input type="text" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={setupForm.control}
+                      name="atmosfeedAPI"
+                      render={({ field }) => (
+                        <FormItem className="mt-4">
+                          <FormLabel>Atmosfeed API</FormLabel>
+
+                          <FormDescription>
+                            The URL that Atmosfeed&apos;s API is hosted on; most
+                            users don&apos;t need to change this.
+                          </FormDescription>
+
+                          <FormControl>
+                            <Input type="text" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </form>
+          </Form>
+
+          <DialogFooter>
+            <Button type="submit" form="setup">
+              Next
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        onOpenChange={(v) => setDeleteDialogOpen(v)}
+        open={deleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete your Atmosfeed account and remove
+              your data from our servers. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                await deleteData();
+
+                toast({
+                  title: "Data Deleted Successfullyy",
+                  description:
+                    "Your data has successfully been deleted from our servers and you have been logged out.",
+                });
+              }}
+            >
+              Delete Your Data
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog
+        onOpenChange={(v) => setPrivacyPolicyDialogOpen(v)}
+        open={privacyPolicyDialogOpen}
+      >
+        <DialogContent className="max-w-[720px] h-[720px] max-h-screen">
+          <DialogHeader>
+            <DialogTitle>Privacy Policy</DialogTitle>
+          </DialogHeader>
+
+          <ScrollArea className="privacy-policy">
+            <PrivacyPolicy />
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
