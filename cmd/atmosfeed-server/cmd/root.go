@@ -8,7 +8,6 @@ import (
 )
 
 const (
-	pdsURLFlag      = "pds-url"
 	redisURLFlag    = "redis-url"
 	s3URLFlag       = "s3-url"
 	verboseFlag     = "verbose"
@@ -34,7 +33,6 @@ https://github.com/pojntfx/atmosfeed`,
 }
 
 func Execute() error {
-	rootCmd.PersistentFlags().String(pdsURLFlag, "https://bsky.social", "PDS URL")
 	rootCmd.PersistentFlags().String(postgresURLFlag, "postgresql://postgres@localhost:5432/atmosfeed?sslmode=disable", "PostgreSQL URL")
 	rootCmd.PersistentFlags().String(redisURLFlag, "redis://localhost:6379/0", "Redis URL")
 	rootCmd.PersistentFlags().String(s3URLFlag, "http://minioadmin:minioadmin@localhost:9000?bucket=atmosfeed", "S3 URL")

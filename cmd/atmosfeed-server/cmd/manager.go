@@ -37,6 +37,7 @@ const (
 	limitFlag            = "limit"
 	feedGeneratorDIDFlag = "feed-generator-did"
 	feedGeneratorURLFlag = "feed-generator-url"
+	bgsURLFlag           = "bgs-url"
 
 	lexiconFeedPost = "app.bsky.feed.post"
 )
@@ -53,6 +54,8 @@ var (
 	errMissingRkey        = errors.New("missing rkey")
 	errCouldNotUpsertFeed = errors.New("could not upsert feed")
 	errCouldNotDeleteFeed = errors.New("could not delete feed")
+
+	errMissingService = errors.New("missing service")
 )
 
 type feedSkeleton struct {
@@ -85,7 +88,7 @@ var managerCmd = &cobra.Command{
 			return err
 		}
 
-		pu, err := url.Parse(viper.GetString(pdsURLFlag))
+		pu, err := url.Parse(viper.GetString(bgsURLFlag))
 		if err != nil {
 			return err
 		}
@@ -98,7 +101,7 @@ var managerCmd = &cobra.Command{
 		}
 		defer conn.Close()
 
-		log.Println("Connected to PDS", viper.GetString(pdsURLFlag))
+		log.Println("Connected to PDS", viper.GetString(bgsURLFlag))
 
 		options, err := redis.ParseURL(viper.GetString(redisURLFlag))
 		if err != nil {
@@ -387,6 +390,15 @@ var managerCmd = &cobra.Command{
 					return
 				}
 
+				service := r.URL.Query().Get("service")
+				if strings.TrimSpace(service) == "" {
+					http.Error(w, errMissingService.Error(), http.StatusUnprocessableEntity)
+
+					log.Println(errMissingService)
+
+					return
+				}
+
 				defer func() {
 					if err := recover(); err != nil {
 						w.WriteHeader(http.StatusInternalServerError)
@@ -397,7 +409,7 @@ var managerCmd = &cobra.Command{
 
 				client := &xrpc.Client{
 					Client: http.DefaultClient,
-					Host:   viper.GetString(pdsURLFlag),
+					Host:   service,
 					Auth: &xrpc.AuthInfo{
 						AccessJwt: accessJwt,
 					},
@@ -479,6 +491,7 @@ var managerCmd = &cobra.Command{
 }
 
 func init() {
+	managerCmd.PersistentFlags().String(bgsURLFlag, "https://bsky.network", "BGS URL")
 	managerCmd.PersistentFlags().String(laddrFlag, "localhost:1337", "Listen address")
 	managerCmd.PersistentFlags().Duration(ttlFlag, time.Hour*6, "Maximum age of posts to return for a feed")
 	managerCmd.PersistentFlags().Int(limitFlag, 100, "Maximum amount of posts to return for a feed")

@@ -38,6 +38,9 @@ go run ./cmd/atmosfeed-client/ publish --username felicitas.pojtinger.com --pass
 go run ./cmd/atmosfeed-client/ apply --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey german --feed-classifier out/local-german-latest.scale
 go run ./cmd/atmosfeed-client/ publish --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey german --feed-name 'Atmosfeed German' --feed-description 'Most popular German posts on Bluesky in the last 24h (testing feed)' --feed-generator-did 'did:web:atmosfeed-feeds.serveo.net'
 
+go run ./cmd/atmosfeed-client/ apply --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey trending --feed-classifier out/local-trending-latest.scale
+go run ./cmd/atmosfeed-client/ publish --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey trending --feed-name 'Atmosfeed Trending' --feed-description 'Most popular trending posts on Bluesky in the last 24h (testing feed)' --feed-generator-did 'did:web:atmosfeed-feeds.serveo.net'
+
 # Cleanup for everything but trending
 go run ./cmd/atmosfeed-client/ delete --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey questions
 go run ./cmd/atmosfeed-client/ delete --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey german

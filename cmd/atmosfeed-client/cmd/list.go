@@ -61,6 +61,10 @@ var listCmd = &cobra.Command{
 
 		u = u.JoinPath("admin", "feeds")
 
+		q := u.Query()
+		q.Add("service", viper.GetString(pdsURLFlag))
+		u.RawQuery = q.Encode()
+
 		req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 		if err != nil {
 			return err

@@ -44,6 +44,7 @@ var applyCmd = &cobra.Command{
 
 		q := u.Query()
 		q.Add("rkey", viper.GetString(feedRkeyFlag))
+		q.Add("service", viper.GetString(pdsURLFlag))
 		u.RawQuery = q.Encode()
 
 		req, err := http.NewRequest(http.MethodPut, u.String(), f)
