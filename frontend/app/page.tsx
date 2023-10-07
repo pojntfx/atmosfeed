@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -37,6 +38,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuPortal,
@@ -65,14 +67,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Database,
   DownloadCloud,
+  Edit,
   Laptop,
   Loader,
   LogIn,
   LogOut,
   Moon,
   MoonStar,
+  MoreVertical,
+  Plus,
+  Rocket,
   Save,
   Sun,
+  Trash,
   TrashIcon,
   User,
 } from "lucide-react";
@@ -157,6 +164,8 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [username, password, service, atmosfeedAPI]);
 
+  const [cardCount, setCardCount] = useState(1);
+
   return (
     <>
       <div className="fixed w-full">
@@ -179,6 +188,14 @@ export default function Home() {
 
           {signedIn && (
             <div className="flex content-center">
+              <Button
+                className="mr-4"
+                onClick={() => setCardCount((v) => v + 1)}
+              >
+                <Plus className="sm:mr-2 h-4 w-4" />{" "}
+                <span className="hidden sm:inline">Create Feed</span>
+              </Button>
+
               <DropdownMenu>
                 <DropdownMenuTrigger>
                   <Avatar>
@@ -298,9 +315,73 @@ export default function Home() {
       <div className="content">
         <main className="flex-grow flex flex-col justify-center items-center gap-2 container">
           {signedIn ? (
-            <>
-              <h1>Content</h1>
-            </>
+            [...Array(cardCount).keys()].map((_, i) => (
+              <Card
+                className="w-full max-w-2xl flex items-center justify-between"
+                key={i}
+              >
+                <CardHeader>
+                  <div className="text-2xl font-semibold leading-none tracking-tight flex items-center justify-between">
+                    <div>Atmosfeed Trending {i + 1}</div>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild className="sm:hidden">
+                        <Button variant="ghost" size="icon">
+                          <MoreVertical />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuGroup>
+                          <DropdownMenuItem>
+                            <Edit className="mr-2 h-4 w-4" /> Edit
+                          </DropdownMenuItem>
+
+                          <DropdownMenuItem>
+                            <Rocket className="mr-2 h-4 w-4" /> Publish
+                          </DropdownMenuItem>
+
+                          <DropdownMenuItem>
+                            <Trash className="mr-2 h-4 w-4" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <CardDescription>
+                    <code>trending-{i + 1}</code>
+                  </CardDescription>
+                  <CardDescription>
+                    Most popular trending posts on Bluesky in the last 24h
+                    (testing feed)
+                  </CardDescription>
+                </CardHeader>
+
+                <CardFooter className="py-0 pr-4 hidden sm:flex">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuGroup>
+                        <DropdownMenuItem>
+                          <Edit className="mr-2 h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem>
+                          <Rocket className="mr-2 h-4 w-4" /> Publish
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem>
+                          <Trash className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </CardFooter>
+              </Card>
+            ))
           ) : (
             <>
               <Image
