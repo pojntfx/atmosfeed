@@ -2,7 +2,7 @@
 
 ![Logo](./docs/logo-readme.png)
 
-Create fully custom Bluesky feeds with Wasm modules, powered by Scale Functions.
+Create custom Bluesky feeds with WebAssembly and Scale.
 
 ## Overview
 

@@ -18,7 +18,7 @@ const (
 var rootCmd = &cobra.Command{
 	Use:   "atmosfeed-client",
 	Short: "Interact with feeds on Atmosfeed servers and Bluesky PDSes",
-	Long: `Create fully custom Bluesky feeds with Wasm modules, powered by Scale Functions.
+	Long: `Create custom Bluesky feeds with WebAssembly and Scale.
 Find more information at:
 https://github.com/pojntfx/atmosfeed`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
