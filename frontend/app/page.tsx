@@ -477,7 +477,7 @@ export default function Home() {
           <Form {...setupForm}>
             <form
               onSubmit={setupForm.handleSubmit((v) => {
-                setUsername(v.username);
+                setUsername(v.username.replace(/^@/, ""));
                 setPassword(v.password);
 
                 setService(v.service);
