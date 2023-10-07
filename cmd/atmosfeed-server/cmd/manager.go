@@ -40,6 +40,8 @@ const (
 	bgsURLFlag           = "bgs-url"
 
 	lexiconFeedPost = "app.bsky.feed.post"
+
+	originFlag = "origin"
 )
 
 var (
@@ -130,6 +132,245 @@ var managerCmd = &cobra.Command{
 		log.Println("Listening on", lis.Addr())
 
 		mux := http.NewServeMux()
+
+		mux.HandleFunc("/xrpc/app.bsky.feed.getFeedSkeleton", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			feedURL := r.URL.Query().Get("feed")
+			if strings.TrimSpace(feedURL) == "" {
+				http.Error(w, errMissingFeedURI.Error(), http.StatusUnprocessableEntity)
+
+				log.Println(errMissingFeedURI)
+
+				return
+			}
+
+			u, err := iutil.ParseAtUri(feedURL)
+			if err != nil {
+				http.Error(w, errInvalidFeedURI.Error(), http.StatusUnprocessableEntity)
+
+				log.Println(errInvalidFeedURI)
+
+				return
+			}
+
+			rawFeedLimit := r.URL.Query().Get("limit")
+			if strings.TrimSpace(rawFeedLimit) == "" {
+				rawFeedLimit = "1"
+			}
+
+			feedLimit, err := strconv.Atoi(rawFeedLimit)
+			if err != nil {
+				http.Error(w, errInvalidLimit.Error(), http.StatusUnprocessableEntity)
+
+				log.Println(errInvalidLimit)
+
+				return
+			}
+
+			if feedLimit > viper.GetInt(limitFlag) {
+				http.Error(w, errLimitTooHigh.Error(), http.StatusUnprocessableEntity)
+
+				log.Println(errLimitTooHigh)
+
+				return
+			}
+
+			feedCursor := r.URL.Query().Get("cursor")
+
+			defer func() {
+				if err := recover(); err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+
+					log.Printf("Client disconnected with error: %v", err)
+				}
+			}()
+
+			rawFeedPosts := []models.GetFeedPostsRow{}
+			if strings.TrimSpace(feedCursor) == "" {
+				rawFeedPosts, err = persister.GetFeedPosts(
+					cmd.Context(),
+					u.Did,
+					u.Rkey,
+					time.Now().Add(-viper.GetDuration(ttlFlag)),
+					int32(feedLimit),
+				)
+				if err != nil {
+					panic(err)
+				}
+			} else {
+				cursor, err := iutil.ParseAtUri(feedCursor)
+				if err != nil {
+					http.Error(w, errInvalidFeedCursor.Error(), http.StatusUnprocessableEntity)
+
+					log.Println(errInvalidFeedCursor)
+
+					return
+				}
+
+				fp, err := persister.GetFeedPostsCursor(
+					cmd.Context(),
+					u.Did,
+					u.Rkey,
+					time.Now().Add(-viper.GetDuration(ttlFlag)),
+					int32(feedLimit),
+					cursor.Did,
+					cursor.Rkey,
+				)
+				if err != nil {
+					panic(err)
+				}
+
+				for _, p := range fp {
+					rawFeedPosts = append(rawFeedPosts, models.GetFeedPostsRow(p))
+				}
+			}
+
+			res := feedSkeleton{
+				Feed: []feedSkeletonPost{},
+			}
+			for _, rawFeedPost := range rawFeedPosts {
+				res.Feed = append(res.Feed, feedSkeletonPost{
+					Post: fmt.Sprintf("at://%s/%s/%s", rawFeedPost.Did, lexiconFeedPost, rawFeedPost.Rkey),
+				})
+			}
+
+			if len(res.Feed) > 0 {
+				res.Cursor = res.Feed[len(res.Feed)-1].Post
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+
+			if err := json.NewEncoder(w).Encode(res); err != nil {
+				panic(fmt.Errorf("%w: %v", errCouldNotEncode, err))
+			}
+		}))
+
+		mux.HandleFunc("/.well-known/did.json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer func() {
+				if err := recover(); err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+
+					log.Printf("Client disconnected with error: %v", err)
+				}
+			}()
+
+			res := wellKnownDidDocument{
+				Context: []string{"https://www.w3.org/ns/did/v1"},
+				ID:      viper.GetString(feedGeneratorDIDFlag),
+				Service: []wellKnownService{
+					{
+						ID:              "#bsky_fg",
+						Type:            "BskyFeedGenerator",
+						ServiceEndpoint: viper.GetString(feedGeneratorURLFlag),
+					},
+				},
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+
+			if err := json.NewEncoder(w).Encode(res); err != nil {
+				panic(fmt.Errorf("%w: %v", errCouldNotEncode, err))
+			}
+		}))
+
+		mux.HandleFunc("/admin/feeds", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if o := r.Header.Get("Origin"); o == viper.GetString(originFlag) {
+				w.Header().Set("Access-Control-Allow-Origin", o)
+				w.Header().Set("Access-Control-Allow-Methods", "GET, PUT, DELETE")
+				w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+			}
+
+			if r.Method == http.MethodOptions {
+				return
+			}
+
+			accessJwt := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+			if strings.TrimSpace(accessJwt) == "" {
+				w.WriteHeader(http.StatusUnauthorized)
+
+				return
+			}
+
+			service := r.URL.Query().Get("service")
+			if strings.TrimSpace(service) == "" {
+				http.Error(w, errMissingService.Error(), http.StatusUnprocessableEntity)
+
+				log.Println(errMissingService)
+
+				return
+			}
+
+			defer func() {
+				if err := recover(); err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+
+					log.Printf("Client disconnected with error: %v", err)
+				}
+			}()
+
+			client := &xrpc.Client{
+				Client: http.DefaultClient,
+				Host:   service,
+				Auth: &xrpc.AuthInfo{
+					AccessJwt: accessJwt,
+				},
+			}
+
+			session, err := atproto.ServerGetSession(r.Context(), client)
+			if err != nil {
+				panic(fmt.Errorf("%w: %v", errCouldNotGetSession, err))
+			}
+
+			switch r.Method {
+			case http.MethodGet:
+				rawAdminFeeds, err := persister.GetFeedsForDid(r.Context(), session.Did)
+				if err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotGetFeeds, err))
+				}
+
+				res := []string{}
+				for _, rawFeed := range rawAdminFeeds {
+					res = append(res, rawFeed.Rkey)
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+
+				if err := json.NewEncoder(w).Encode(res); err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotEncode, err))
+				}
+
+			case http.MethodPut:
+				rkey := r.URL.Query().Get("rkey")
+				if strings.TrimSpace(rkey) == "" {
+					http.Error(w, errMissingRkey.Error(), http.StatusUnprocessableEntity)
+
+					log.Println(errMissingRkey)
+
+					return
+				}
+
+				if err := persister.UpsertFeed(cmd.Context(), session.Did, rkey, r.Body); err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotUpsertFeed, err))
+				}
+
+			case http.MethodDelete:
+				rkey := r.URL.Query().Get("rkey")
+				if strings.TrimSpace(rkey) == "" {
+					http.Error(w, errMissingRkey.Error(), http.StatusUnprocessableEntity)
+
+					log.Println(errMissingRkey)
+
+					return
+				}
+
+				if err := persister.DeleteFeed(cmd.Context(), session.Did, rkey); err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotDeleteFeed, err))
+				}
+
+			default:
+				w.WriteHeader(http.StatusMethodNotAllowed)
+			}
+		}))
 
 		handlers := events.RepoStreamCallbacks{
 			RepoCommit: func(c *atproto.SyncSubscribeRepos_Commit) error {
@@ -239,238 +480,12 @@ var managerCmd = &cobra.Command{
 				),
 			); err != nil {
 				errs <- err
+
+				return
 			}
 		}()
 
 		go func() {
-			mux.HandleFunc("/xrpc/app.bsky.feed.getFeedSkeleton", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				feedURL := r.URL.Query().Get("feed")
-				if strings.TrimSpace(feedURL) == "" {
-					http.Error(w, errMissingFeedURI.Error(), http.StatusUnprocessableEntity)
-
-					log.Println(errMissingFeedURI)
-
-					return
-				}
-
-				u, err := iutil.ParseAtUri(feedURL)
-				if err != nil {
-					http.Error(w, errInvalidFeedURI.Error(), http.StatusUnprocessableEntity)
-
-					log.Println(errInvalidFeedURI)
-
-					return
-				}
-
-				rawFeedLimit := r.URL.Query().Get("limit")
-				if strings.TrimSpace(rawFeedLimit) == "" {
-					rawFeedLimit = "1"
-				}
-
-				feedLimit, err := strconv.Atoi(rawFeedLimit)
-				if err != nil {
-					http.Error(w, errInvalidLimit.Error(), http.StatusUnprocessableEntity)
-
-					log.Println(errInvalidLimit)
-
-					return
-				}
-
-				if feedLimit > viper.GetInt(limitFlag) {
-					http.Error(w, errLimitTooHigh.Error(), http.StatusUnprocessableEntity)
-
-					log.Println(errLimitTooHigh)
-
-					return
-				}
-
-				feedCursor := r.URL.Query().Get("cursor")
-
-				defer func() {
-					if err := recover(); err != nil {
-						w.WriteHeader(http.StatusInternalServerError)
-
-						log.Printf("Client disconnected with error: %v", err)
-					}
-				}()
-
-				rawFeedPosts := []models.GetFeedPostsRow{}
-				if strings.TrimSpace(feedCursor) == "" {
-					rawFeedPosts, err = persister.GetFeedPosts(
-						cmd.Context(),
-						u.Did,
-						u.Rkey,
-						time.Now().Add(-viper.GetDuration(ttlFlag)),
-						int32(feedLimit),
-					)
-					if err != nil {
-						panic(err)
-					}
-				} else {
-					cursor, err := iutil.ParseAtUri(feedCursor)
-					if err != nil {
-						http.Error(w, errInvalidFeedCursor.Error(), http.StatusUnprocessableEntity)
-
-						log.Println(errInvalidFeedCursor)
-
-						return
-					}
-
-					fp, err := persister.GetFeedPostsCursor(
-						cmd.Context(),
-						u.Did,
-						u.Rkey,
-						time.Now().Add(-viper.GetDuration(ttlFlag)),
-						int32(feedLimit),
-						cursor.Did,
-						cursor.Rkey,
-					)
-					if err != nil {
-						panic(err)
-					}
-
-					for _, p := range fp {
-						rawFeedPosts = append(rawFeedPosts, models.GetFeedPostsRow(p))
-					}
-				}
-
-				res := feedSkeleton{
-					Feed: []feedSkeletonPost{},
-				}
-				for _, rawFeedPost := range rawFeedPosts {
-					res.Feed = append(res.Feed, feedSkeletonPost{
-						Post: fmt.Sprintf("at://%s/%s/%s", rawFeedPost.Did, lexiconFeedPost, rawFeedPost.Rkey),
-					})
-				}
-
-				if len(res.Feed) > 0 {
-					res.Cursor = res.Feed[len(res.Feed)-1].Post
-				}
-
-				w.Header().Set("Content-Type", "application/json")
-
-				if err := json.NewEncoder(w).Encode(res); err != nil {
-					panic(fmt.Errorf("%w: %v", errCouldNotEncode, err))
-				}
-			}))
-
-			mux.HandleFunc("/.well-known/did.json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				defer func() {
-					if err := recover(); err != nil {
-						w.WriteHeader(http.StatusInternalServerError)
-
-						log.Printf("Client disconnected with error: %v", err)
-					}
-				}()
-
-				res := wellKnownDidDocument{
-					Context: []string{"https://www.w3.org/ns/did/v1"},
-					ID:      viper.GetString(feedGeneratorDIDFlag),
-					Service: []wellKnownService{
-						{
-							ID:              "#bsky_fg",
-							Type:            "BskyFeedGenerator",
-							ServiceEndpoint: viper.GetString(feedGeneratorURLFlag),
-						},
-					},
-				}
-
-				w.Header().Set("Content-Type", "application/json")
-
-				if err := json.NewEncoder(w).Encode(res); err != nil {
-					panic(fmt.Errorf("%w: %v", errCouldNotEncode, err))
-				}
-			}))
-
-			mux.HandleFunc("/admin/feeds", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				accessJwt := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-				if strings.TrimSpace(accessJwt) == "" {
-					w.WriteHeader(http.StatusUnauthorized)
-
-					return
-				}
-
-				service := r.URL.Query().Get("service")
-				if strings.TrimSpace(service) == "" {
-					http.Error(w, errMissingService.Error(), http.StatusUnprocessableEntity)
-
-					log.Println(errMissingService)
-
-					return
-				}
-
-				defer func() {
-					if err := recover(); err != nil {
-						w.WriteHeader(http.StatusInternalServerError)
-
-						log.Printf("Client disconnected with error: %v", err)
-					}
-				}()
-
-				client := &xrpc.Client{
-					Client: http.DefaultClient,
-					Host:   service,
-					Auth: &xrpc.AuthInfo{
-						AccessJwt: accessJwt,
-					},
-				}
-
-				session, err := atproto.ServerGetSession(r.Context(), client)
-				if err != nil {
-					panic(fmt.Errorf("%w: %v", errCouldNotGetSession, err))
-				}
-
-				switch r.Method {
-				case http.MethodGet:
-					rawAdminFeeds, err := persister.GetFeedsForDid(r.Context(), session.Did)
-					if err != nil {
-						panic(fmt.Errorf("%w: %v", errCouldNotGetFeeds, err))
-					}
-
-					res := []string{}
-					for _, rawFeed := range rawAdminFeeds {
-						res = append(res, rawFeed.Rkey)
-					}
-
-					w.Header().Set("Content-Type", "application/json")
-
-					if err := json.NewEncoder(w).Encode(res); err != nil {
-						panic(fmt.Errorf("%w: %v", errCouldNotEncode, err))
-					}
-
-				case http.MethodPut:
-					rkey := r.URL.Query().Get("rkey")
-					if strings.TrimSpace(rkey) == "" {
-						http.Error(w, errMissingRkey.Error(), http.StatusUnprocessableEntity)
-
-						log.Println(errMissingRkey)
-
-						return
-					}
-
-					if err := persister.UpsertFeed(cmd.Context(), session.Did, rkey, r.Body); err != nil {
-						panic(fmt.Errorf("%w: %v", errCouldNotUpsertFeed, err))
-					}
-
-				case http.MethodDelete:
-					rkey := r.URL.Query().Get("rkey")
-					if strings.TrimSpace(rkey) == "" {
-						http.Error(w, errMissingRkey.Error(), http.StatusUnprocessableEntity)
-
-						log.Println(errMissingRkey)
-
-						return
-					}
-
-					if err := persister.DeleteFeed(cmd.Context(), session.Did, rkey); err != nil {
-						panic(fmt.Errorf("%w: %v", errCouldNotDeleteFeed, err))
-					}
-
-				default:
-					w.WriteHeader(http.StatusMethodNotAllowed)
-				}
-			}))
-
 			if err := http.Serve(lis, mux); err != nil {
 				errs <- err
 
@@ -479,11 +494,9 @@ var managerCmd = &cobra.Command{
 		}()
 
 		for err := range errs {
-			if err == nil {
-				return nil
+			if err != nil {
+				return err
 			}
-
-			return err
 		}
 
 		return nil
@@ -497,6 +510,7 @@ func init() {
 	managerCmd.PersistentFlags().Int(limitFlag, 100, "Maximum amount of posts to return for a feed")
 	managerCmd.PersistentFlags().String(feedGeneratorDIDFlag, "did:web:atmosfeed-feeds.serveo.net", "DID of the feed generator (typically the hostname of the publicly reachable URL)")
 	managerCmd.PersistentFlags().String(feedGeneratorURLFlag, "https://atmosfeed-feeds.serveo.net", "Publicly reachable URL of the feed generator")
+	managerCmd.PersistentFlags().String(originFlag, "https://atmosfeed.p8.lu", "Allowed CORS origin")
 
 	viper.AutomaticEnv()
 

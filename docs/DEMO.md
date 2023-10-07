@@ -8,6 +8,7 @@ docker rm -f atmosfeed-minio && docker run --name atmosfeed-minio -p 9000:9000 -
 
 make -j$(nproc) depend
 
+export ATMOSFEED_ORIGIN='http://localhost:3000'
 make -j$(nproc) depend/cli && go run ./cmd/atmosfeed-server manager
 
 make -j$(nproc) depend/cli && go run ./cmd/atmosfeed-server worker --working-directory ~/.local/share/atmosfeed/var/lib/atmosfeed/worker-1
