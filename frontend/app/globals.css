@@ -353,3 +353,7 @@ body {
     padding-bottom: 1rem;
   }
 }
+
+.title-description {
+  margin-top: 0 !important;
+}

@@ -1,4 +1,5 @@
 export interface IFeed {
   rkey: string;
-  published: false;
+  title?: string;
+  description?: string;
 }

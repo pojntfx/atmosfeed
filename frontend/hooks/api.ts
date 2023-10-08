@@ -82,12 +82,12 @@ export const useAPI = (
 
   const [api, setAPI] = useState<RestAPI>();
   useAsyncEffect(() => {
-    if (!atmosfeedAPI || !service || !accessJWT) {
+    if (!atmosfeedAPI || !service || !accessJWT || !agent || !did) {
       return;
     }
 
-    setAPI(new RestAPI(new URL(atmosfeedAPI), service, accessJWT));
-  }, [atmosfeedAPI, service, accessJWT]);
+    setAPI(new RestAPI(new URL(atmosfeedAPI), service, accessJWT, agent, did));
+  }, [atmosfeedAPI, service, accessJWT, agent, did]);
 
   const [feeds, setFeeds] = useState<IFeed[]>([]);
   useAsyncEffect(async () => {

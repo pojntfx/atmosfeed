@@ -1,10 +1,13 @@
+import { BskyAgent } from "@atproto/api";
 import { IFeed } from "./models";
 
 export class RestAPI {
   constructor(
     private apiURL: URL,
     private service: string,
-    private accessJWT: string
+    private accessJWT: string,
+    private agent: BskyAgent,
+    private did: string
   ) {}
 
   async getFeeds(): Promise<IFeed[]> {
@@ -21,6 +24,16 @@ export class RestAPI {
         },
       })
     ).json()) as string[];
+
+    const bskyFeeds = await this.agent.app.bsky.feed.getActorFeeds({
+      actor: this.did,
+    });
+
+    if (!bskyFeeds.success) {
+      throw new Error("could not fetch feeds from Bluesky");
+    }
+
+    console.log(bskyFeeds.data.feeds);
 
     return atmosfeedFeeds.map((v) => ({
       rkey: v,

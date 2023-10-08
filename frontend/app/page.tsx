@@ -74,6 +74,7 @@ import {
   DownloadCloud,
   Edit,
   Laptop,
+  ListChecks,
   Loader,
   LogIn,
   LogOut,
@@ -322,69 +323,32 @@ export default function Home() {
               >
                 <CardHeader>
                   <div className="text-2xl font-semibold leading-none tracking-tight flex items-center justify-between">
-                    <div>Atmosfeed Trending {i + 1}</div>
-
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild className="sm:hidden">
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuGroup>
-                          <DropdownMenuItem>
-                            <Edit className="mr-2 h-4 w-4" /> Edit
-                          </DropdownMenuItem>
-
-                          {feed.published ? (
-                            <DropdownMenuItem>
-                              <PlaneLanding className="mr-2 h-4 w-4" />{" "}
-                              Unpublish
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem>
-                              <PlaneTakeoff className="mr-2 h-4 w-4" /> Publish
-                            </DropdownMenuItem>
-                          )}
-
-                          <DropdownMenuItem>
-                            <Trash className="mr-2 h-4 w-4" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {feed.title && <div>{feed.title}</div>}
                   </div>
-                  <CardDescription>
+                  <CardDescription
+                    className={
+                      "flex justify-center align-center w-100 " +
+                      (feed.title ? "" : "title-description")
+                    }
+                  >
                     <code>{feed.rkey}</code>
                   </CardDescription>
-                  <CardDescription>
-                    Most popular trending posts on Bluesky in the last 24h
-                    (testing feed)
-                  </CardDescription>
+
+                  {feed.description && (
+                    <CardDescription>{feed.description}</CardDescription>
+                  )}
                 </CardHeader>
 
-                <CardFooter className="py-0 pr-4 hidden sm:flex gap-2">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        {feed.published ? (
-                          <Button size="icon" variant="destructive">
-                            <PlaneLanding />
-                          </Button>
-                        ) : (
-                          <Button size="icon" variant="secondary">
-                            <PlaneTakeoff />
-                          </Button>
-                        )}
-                      </TooltipTrigger>
-
-                      <TooltipContent>
-                        {feed.published
-                          ? "Unpublish this feed"
-                          : "Publish this feed"}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                <CardFooter className="py-0 pr-4 gap-2">
+                  {feed.title ? (
+                    <Button variant="ghost" className="hidden sm:flex">
+                      <PlaneLanding className="mr-2 h-4 w-4" /> Unpublish
+                    </Button>
+                  ) : (
+                    <Button variant="secondary" className="hidden sm:flex">
+                      <ListChecks className="mr-2 h-4 w-4" /> Finalize
+                    </Button>
+                  )}
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -397,6 +361,16 @@ export default function Home() {
                         <DropdownMenuItem>
                           <Edit className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
+
+                        {feed.title ? (
+                          <DropdownMenuItem className="sm:hidden">
+                            <PlaneLanding className="mr-2 h-4 w-4" /> Unpublish
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem className="sm:hidden">
+                            <ListChecks className="mr-2 h-4 w-4" /> Finalize
+                          </DropdownMenuItem>
+                        )}
 
                         <DropdownMenuItem>
                           <Trash className="mr-2 h-4 w-4" /> Delete
