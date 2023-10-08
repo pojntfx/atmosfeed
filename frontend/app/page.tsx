@@ -60,12 +60,6 @@ import { Input } from "@/components/ui/input";
 import { PrivacyPolicy } from "@/components/ui/privacy-policy";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
 import { useAPI } from "@/hooks/api";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -73,8 +67,8 @@ import {
   Database,
   DownloadCloud,
   Edit,
+  FileSignature,
   Laptop,
-  ListChecks,
   Loader,
   LogIn,
   LogOut,
@@ -82,7 +76,6 @@ import {
   MoonStar,
   MoreVertical,
   PlaneLanding,
-  PlaneTakeoff,
   Plus,
   Sun,
   Trash,
@@ -326,10 +319,7 @@ export default function Home() {
                     {feed.title && <div>{feed.title}</div>}
                   </div>
                   <CardDescription
-                    className={
-                      "flex justify-center align-center w-100 " +
-                      (feed.title ? "" : "title-description")
-                    }
+                    className={feed.title ? "" : "title-description"}
                   >
                     <code>{feed.rkey}</code>
                   </CardDescription>
@@ -340,13 +330,9 @@ export default function Home() {
                 </CardHeader>
 
                 <CardFooter className="py-0 pr-4 gap-2">
-                  {feed.title ? (
-                    <Button variant="ghost" className="hidden sm:flex">
-                      <PlaneLanding className="mr-2 h-4 w-4" /> Unpublish
-                    </Button>
-                  ) : (
+                  {!feed.title && (
                     <Button variant="secondary" className="hidden sm:flex">
-                      <ListChecks className="mr-2 h-4 w-4" /> Finalize
+                      <FileSignature className="mr-2 h-4 w-4" /> Finalize
                     </Button>
                   )}
 
@@ -363,12 +349,12 @@ export default function Home() {
                         </DropdownMenuItem>
 
                         {feed.title ? (
-                          <DropdownMenuItem className="sm:hidden">
+                          <DropdownMenuItem>
                             <PlaneLanding className="mr-2 h-4 w-4" /> Unpublish
                           </DropdownMenuItem>
                         ) : (
                           <DropdownMenuItem className="sm:hidden">
-                            <ListChecks className="mr-2 h-4 w-4" /> Finalize
+                            <FileSignature className="mr-2 h-4 w-4" /> Finalize
                           </DropdownMenuItem>
                         )}
 

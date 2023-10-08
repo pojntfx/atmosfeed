@@ -1,4 +1,4 @@
-import { BskyAgent } from "@atproto/api";
+import { AtUri, BskyAgent } from "@atproto/api";
 import { IFeed } from "./models";
 
 export class RestAPI {
@@ -33,11 +33,24 @@ export class RestAPI {
       throw new Error("could not fetch feeds from Bluesky");
     }
 
-    console.log(bskyFeeds.data.feeds);
+    return atmosfeedFeeds
+      .map((v) => {
+        const bskyFeed = bskyFeeds.data.feeds.find(
+          (f) => new AtUri(f.uri).rkey === v
+        );
 
-    return atmosfeedFeeds.map((v) => ({
-      rkey: v,
-      published: false,
-    }));
+        if (bskyFeed) {
+          return {
+            rkey: v,
+            title: bskyFeed.displayName,
+            description: bskyFeed.description,
+          };
+        }
+
+        return {
+          rkey: v,
+        };
+      })
+      .sort((a, b) => (a.title || "").localeCompare(b.title || ""));
   }
 }
