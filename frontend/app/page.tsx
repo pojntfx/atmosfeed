@@ -20,11 +20,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -62,7 +60,14 @@ import { Input } from "@/components/ui/input";
 import { PrivacyPolicy } from "@/components/ui/privacy-policy";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
+import { useAPI } from "@/hooks/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Database,
@@ -75,9 +80,9 @@ import {
   Moon,
   MoonStar,
   MoreVertical,
+  PlaneLanding,
+  PlaneTakeoff,
   Plus,
-  Rocket,
-  Save,
   Sun,
   Trash,
   TrashIcon,
@@ -85,7 +90,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useLocalStorage } from "usehooks-ts";
 import * as z from "zod";
@@ -135,36 +140,34 @@ export default function Home() {
 
   const { toast } = useToast();
 
-  const [signedIn, setSignedin] = useState(false);
-  const logout = useCallback(() => setPassword(""), [setPassword]);
+  const {
+    avatar,
+    did,
+    signedIn,
 
-  const [avatar] = useState("");
-  const [did] = useState("");
-  const [loading, setLoading] = useState(true);
+    feeds,
 
-  const deleteData = useCallback(() => {}, []);
+    deleteData,
 
-  useEffect(() => {
-    if (!username || !password || !service || !atmosfeedAPI) {
-      setSignedin(false);
-
-      setLoading(false);
-
-      return;
-    }
-
-    setLoading(true);
-
-    const interval = setInterval(() => {
-      setSignedin(true);
-
-      setLoading(false);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [username, password, service, atmosfeedAPI]);
-
-  const [cardCount, setCardCount] = useState(1);
+    loading,
+    logout,
+  } = useAPI(
+    username,
+    password,
+    service,
+    atmosfeedAPI,
+    () => setPassword(""),
+    (err, loggedOut) =>
+      loggedOut
+        ? toast({
+            title: "You Have Been Logged Out",
+            description: `Authentication with Bluesky failed and you have been logged out. The error is: "${err?.message}"`,
+          })
+        : toast({
+            title: "An Error Occured",
+            description: `An error could not be handled. The error is: "${err?.message}"`,
+          })
+  );
 
   return (
     <>
@@ -188,10 +191,7 @@ export default function Home() {
 
           {signedIn && (
             <div className="flex content-center">
-              <Button
-                className="mr-4"
-                onClick={() => setCardCount((v) => v + 1)}
-              >
+              <Button className="mr-4">
                 <Plus className="sm:mr-2 h-4 w-4" />{" "}
                 <span className="hidden sm:inline">Create Feed</span>
               </Button>
@@ -315,7 +315,7 @@ export default function Home() {
       <div className="content">
         <main className="flex-grow flex flex-col justify-center items-center gap-2 container">
           {signedIn ? (
-            [...Array(cardCount).keys()].map((_, i) => (
+            feeds.map((feed, i) => (
               <Card
                 className="w-full max-w-2xl flex items-center justify-between"
                 key={i}
@@ -336,9 +336,16 @@ export default function Home() {
                             <Edit className="mr-2 h-4 w-4" /> Edit
                           </DropdownMenuItem>
 
-                          <DropdownMenuItem>
-                            <Rocket className="mr-2 h-4 w-4" /> Publish
-                          </DropdownMenuItem>
+                          {feed.published ? (
+                            <DropdownMenuItem>
+                              <PlaneLanding className="mr-2 h-4 w-4" />{" "}
+                              Unpublish
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem>
+                              <PlaneTakeoff className="mr-2 h-4 w-4" /> Publish
+                            </DropdownMenuItem>
+                          )}
 
                           <DropdownMenuItem>
                             <Trash className="mr-2 h-4 w-4" /> Delete
@@ -348,7 +355,7 @@ export default function Home() {
                     </DropdownMenu>
                   </div>
                   <CardDescription>
-                    <code>trending-{i + 1}</code>
+                    <code>{feed.rkey}</code>
                   </CardDescription>
                   <CardDescription>
                     Most popular trending posts on Bluesky in the last 24h
@@ -356,7 +363,29 @@ export default function Home() {
                   </CardDescription>
                 </CardHeader>
 
-                <CardFooter className="py-0 pr-4 hidden sm:flex">
+                <CardFooter className="py-0 pr-4 hidden sm:flex gap-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        {feed.published ? (
+                          <Button size="icon" variant="destructive">
+                            <PlaneLanding />
+                          </Button>
+                        ) : (
+                          <Button size="icon" variant="secondary">
+                            <PlaneTakeoff />
+                          </Button>
+                        )}
+                      </TooltipTrigger>
+
+                      <TooltipContent>
+                        {feed.published
+                          ? "Unpublish this feed"
+                          : "Publish this feed"}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon">
@@ -367,10 +396,6 @@ export default function Home() {
                       <DropdownMenuGroup>
                         <DropdownMenuItem>
                           <Edit className="mr-2 h-4 w-4" /> Edit
-                        </DropdownMenuItem>
-
-                        <DropdownMenuItem>
-                          <Rocket className="mr-2 h-4 w-4" /> Publish
                         </DropdownMenuItem>
 
                         <DropdownMenuItem>

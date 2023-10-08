@@ -19,33 +19,33 @@ ssh -R atmosfeed-feeds.serveo.net:80:localhost:1337 serveo.net
 # End-to-End deployment
 make -j$(nproc) depend/classifier/questions
 
-go run ./cmd/atmosfeed-client/ list --username felicitas.pojtinger.com --password=${PASSWORD}
-go run ./cmd/atmosfeed-client/ apply --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey questions --feed-classifier out/local-questions-latest.scale
-go run ./cmd/atmosfeed-client/ publish --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey questions --feed-name 'Atmosfeed Questions' --feed-description 'Most popular questions on Bluesky in the last 24h (testing feed).' --feed-generator-did 'did:web:atmosfeed-feeds.serveo.net'
-go run ./cmd/atmosfeed-client/ list --username felicitas.pojtinger.com --password=${PASSWORD}
-go run ./cmd/atmosfeed-client/ unpublish --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey questions
-go run ./cmd/atmosfeed-client/ delete --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey questions
-go run ./cmd/atmosfeed-client/ list --username felicitas.pojtinger.com --password=${PASSWORD}
+go run ./cmd/atmosfeed-client/ list --username pojntfxtesting.bsky.social --password=${PASSWORD}
+go run ./cmd/atmosfeed-client/ apply --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey questions --feed-classifier out/local-questions-latest.scale
+go run ./cmd/atmosfeed-client/ publish --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey questions --feed-name 'Atmosfeed Questions' --feed-description 'Most popular questions on Bluesky in the last 24h (testing feed).' --feed-generator-did 'did:web:atmosfeed-feeds.serveo.net'
+go run ./cmd/atmosfeed-client/ list --username pojntfxtesting.bsky.social --password=${PASSWORD}
+go run ./cmd/atmosfeed-client/ unpublish --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey questions
+go run ./cmd/atmosfeed-client/ delete --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey questions
+go run ./cmd/atmosfeed-client/ list --username pojntfxtesting.bsky.social --password=${PASSWORD}
 
 # Building the classifiers
 make -j$(nproc) depend/classifier
 
-go run ./cmd/atmosfeed-client/ apply --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey everything --feed-classifier out/local-everything-latest.scale
-go run ./cmd/atmosfeed-client/ publish --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey everything --feed-name 'Atmosfeed Everything' --feed-description 'Newest posts on Bluesky (testing feed)' --feed-generator-did 'did:web:atmosfeed-feeds.serveo.net'
+go run ./cmd/atmosfeed-client/ apply --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey everything --feed-classifier out/local-everything-latest.scale
+go run ./cmd/atmosfeed-client/ publish --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey everything --feed-name 'Atmosfeed Everything' --feed-description 'Newest posts on Bluesky (testing feed)' --feed-generator-did 'did:web:atmosfeed-feeds.serveo.net'
 
-go run ./cmd/atmosfeed-client/ apply --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey questions --feed-classifier out/local-questions-latest.scale
-go run ./cmd/atmosfeed-client/ publish --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey questions --feed-name 'Atmosfeed Questions' --feed-description 'Most popular questions on Bluesky in the last 24h (testing feed).' --feed-generator-did 'did:web:atmosfeed-feeds.serveo.net'
+go run ./cmd/atmosfeed-client/ apply --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey questions --feed-classifier out/local-questions-latest.scale
+go run ./cmd/atmosfeed-client/ publish --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey questions --feed-name 'Atmosfeed Questions' --feed-description 'Most popular questions on Bluesky in the last 24h (testing feed).' --feed-generator-did 'did:web:atmosfeed-feeds.serveo.net'
 
-go run ./cmd/atmosfeed-client/ apply --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey german --feed-classifier out/local-german-latest.scale
-go run ./cmd/atmosfeed-client/ publish --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey german --feed-name 'Atmosfeed German' --feed-description 'Most popular German posts on Bluesky in the last 24h (testing feed)' --feed-generator-did 'did:web:atmosfeed-feeds.serveo.net'
+go run ./cmd/atmosfeed-client/ apply --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey german --feed-classifier out/local-german-latest.scale
+go run ./cmd/atmosfeed-client/ publish --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey german --feed-name 'Atmosfeed German' --feed-description 'Most popular German posts on Bluesky in the last 24h (testing feed)' --feed-generator-did 'did:web:atmosfeed-feeds.serveo.net'
 
-go run ./cmd/atmosfeed-client/ apply --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey trending --feed-classifier out/local-trending-latest.scale
-go run ./cmd/atmosfeed-client/ publish --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey trending --feed-name 'Atmosfeed Trending' --feed-description 'Most popular trending posts on Bluesky in the last 24h (testing feed)' --feed-generator-did 'did:web:atmosfeed-feeds.serveo.net'
+go run ./cmd/atmosfeed-client/ apply --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey trending --feed-classifier out/local-trending-latest.scale
+go run ./cmd/atmosfeed-client/ publish --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey trending --feed-name 'Atmosfeed Trending' --feed-description 'Most popular trending posts on Bluesky in the last 24h (testing feed)' --feed-generator-did 'did:web:atmosfeed-feeds.serveo.net'
 
 # Cleanup for everything but trending
-go run ./cmd/atmosfeed-client/ delete --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey questions
-go run ./cmd/atmosfeed-client/ delete --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey german
-go run ./cmd/atmosfeed-client/ delete --username felicitas.pojtinger.com --password=${PASSWORD} --feed-rkey everything
+go run ./cmd/atmosfeed-client/ delete --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey questions
+go run ./cmd/atmosfeed-client/ delete --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey german
+go run ./cmd/atmosfeed-client/ delete --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey everything
 
 cd frontend
 bun dev # Now visit http://localhost:3000 to open the frontend and sign in
