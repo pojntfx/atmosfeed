@@ -89,7 +89,8 @@ export const useAPI = (
     setAPI(new RestAPI(new URL(atmosfeedAPI), service, accessJWT, agent, did));
   }, [atmosfeedAPI, service, accessJWT, agent, did]);
 
-  const [feeds, setFeeds] = useState<IFeed[]>([]);
+  const [unpublishedFeeds, setUnpublishedFeeds] = useState<IFeed[]>([]);
+  const [publishedFeeds, setPublishedFeeds] = useState<IFeed[]>([]);
   useAsyncEffect(async () => {
     if (!api) {
       return;
@@ -100,7 +101,8 @@ export const useAPI = (
     try {
       const res = await api.getFeeds();
 
-      setFeeds(res);
+      setUnpublishedFeeds(res.unpublished);
+      setPublishedFeeds(res.published);
     } catch (e) {
       handleError(e as Error, false);
     } finally {
@@ -113,7 +115,8 @@ export const useAPI = (
     did,
     signedIn: api ? true : false,
 
-    feeds,
+    unpublishedFeeds,
+    publishedFeeds,
 
     deleteData: async () => {
       if (!api) {

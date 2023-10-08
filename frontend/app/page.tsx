@@ -18,12 +18,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -36,7 +30,6 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuPortal,
@@ -47,6 +40,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DropdownMenuLink } from "@/components/ui/dropdown-menu-link";
+import { FeedCard } from "@/components/ui/feed-card";
 import {
   Form,
   FormControl,
@@ -66,19 +60,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Database,
   DownloadCloud,
-  Edit,
-  FileSignature,
   Laptop,
   Loader,
   LogIn,
   LogOut,
   Moon,
   MoonStar,
-  MoreVertical,
-  PlaneLanding,
   Plus,
   Sun,
-  Trash,
   TrashIcon,
   User,
 } from "lucide-react";
@@ -139,7 +128,8 @@ export default function Home() {
     did,
     signedIn,
 
-    feeds,
+    unpublishedFeeds,
+    publishedFeeds,
 
     deleteData,
 
@@ -184,104 +174,97 @@ export default function Home() {
           )}
 
           {signedIn && (
-            <div className="flex content-center">
-              <Button className="mr-4">
-                <Plus className="sm:mr-2 h-4 w-4" />{" "}
-                <span className="hidden sm:inline">Create Feed</span>
-              </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger>
+                <Avatar>
+                  <AvatarImage src={avatar} alt={"Avatar of " + username} />
+                  <AvatarFallback>AV</AvatarFallback>
+                </Avatar>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuLink
+                  href={`https://bsky.app/profile/${username}`}
+                  target="_blank"
+                >
+                  <User className="mr-2 h-4 w-4" /> Profile
+                </DropdownMenuLink>
+                <DropdownMenuItem onClick={() => logout()}>
+                  <LogOut className="mr-2 h-4 w-4" /> Logout
+                </DropdownMenuItem>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger>
-                  <Avatar>
-                    <AvatarImage src={avatar} alt={"Avatar of " + username} />
-                    <AvatarFallback>AV</AvatarFallback>
-                  </Avatar>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLink
-                    href={`https://bsky.app/profile/${username}`}
-                    target="_blank"
-                  >
-                    <User className="mr-2 h-4 w-4" /> Profile
-                  </DropdownMenuLink>
-                  <DropdownMenuItem onClick={() => logout()}>
-                    <LogOut className="mr-2 h-4 w-4" /> Logout
-                  </DropdownMenuItem>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Database className="mr-2 h-4 w-4" />
+                    <span className="mr-2">Your Data</span>
+                  </DropdownMenuSubTrigger>
 
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      <Database className="mr-2 h-4 w-4" />
-                      <span className="mr-2">Your Data</span>
-                    </DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          const data = {
+                            did,
+                            service,
+                          };
 
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            const data = {
-                              did,
-                              service,
-                            };
+                          const blob = new Blob(
+                            [JSON.stringify(data, null, 2)],
+                            { type: "application/json" }
+                          );
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
 
-                            const blob = new Blob(
-                              [JSON.stringify(data, null, 2)],
-                              { type: "application/json" }
-                            );
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement("a");
+                          a.href = url;
+                          a.download = "atmosfeed.json";
+                          a.click();
 
-                            a.href = url;
-                            a.download = "atmosfeed.json";
-                            a.click();
+                          URL.revokeObjectURL(url);
 
-                            URL.revokeObjectURL(url);
+                          toast({
+                            title: "Data Downloaded Successfully",
+                            description:
+                              "Your data has successfully been downloaded to your system.",
+                          });
+                        }}
+                      >
+                        <DownloadCloud className="mr-2 h-4 w-4" />
+                        <span>Download your Data</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setDeleteDialogOpen((v) => !v)}
+                      >
+                        <TrashIcon className="mr-2 h-4 w-4" />
+                        <span>Delete your Data</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
 
-                            toast({
-                              title: "Data Downloaded Successfully",
-                              description:
-                                "Your data has successfully been downloaded to your system.",
-                            });
-                          }}
-                        >
-                          <DownloadCloud className="mr-2 h-4 w-4" />
-                          <span>Download your Data</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setDeleteDialogOpen((v) => !v)}
-                        >
-                          <TrashIcon className="mr-2 h-4 w-4" />
-                          <span>Delete your Data</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-
-                  <DropdownMenuLabel>Settings</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      <MoonStar className="mr-2 h-4 w-4" />
-                      <span>Theme</span>
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        <DropdownMenuItem onClick={() => setTheme("light")}>
-                          <Sun className="mr-2 h-4 w-4" /> Light
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setTheme("dark")}>
-                          <Moon className="mr-2 h-4 w-4" /> Dark
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setTheme("system")}>
-                          <Laptop className="mr-2 h-4 w-4" /> System
-                        </DropdownMenuItem>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                <DropdownMenuLabel>Settings</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <MoonStar className="mr-2 h-4 w-4" />
+                    <span>Theme</span>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem onClick={() => setTheme("light")}>
+                        <Sun className="mr-2 h-4 w-4" /> Light
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setTheme("dark")}>
+                        <Moon className="mr-2 h-4 w-4" /> Dark
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setTheme("system")}>
+                        <Laptop className="mr-2 h-4 w-4" /> System
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </header>
 
@@ -309,64 +292,36 @@ export default function Home() {
       <div className="content">
         <main className="flex-grow flex flex-col justify-center items-center gap-2 container">
           {signedIn ? (
-            feeds.map((feed, i) => (
-              <Card
-                className="w-full max-w-2xl flex items-center justify-between"
-                key={i}
-              >
-                <CardHeader>
-                  <div className="text-2xl font-semibold leading-none tracking-tight flex items-center justify-between">
-                    {feed.title && <div>{feed.title}</div>}
+            <>
+              <div className="w-full max-w-2xl flex flex-col gap-2">
+                <div className="flex justify-between items-center gap-2 mb-2">
+                  <h2 className="text-xl font-medium">Unpublished Feeds</h2>
+
+                  <Button>
+                    <Plus className="sm:mr-2 h-4 w-4" />{" "}
+                    <span className="hidden sm:inline">Create Feed</span>
+                  </Button>
+                </div>
+
+                {unpublishedFeeds.length > 0
+                  ? unpublishedFeeds.map((feed, i) => (
+                      <FeedCard feed={feed} key={i} />
+                    ))
+                  : "No feeds yet"}
+              </div>
+
+              {publishedFeeds.length > 0 && (
+                <div className="w-full max-w-2xl flex flex-col gap-2">
+                  <div className="flex justify-between items-center gap-2 my-2">
+                    <h2 className="text-xl font-medium">Published Feeds</h2>
                   </div>
-                  <CardDescription
-                    className={feed.title ? "" : "title-description"}
-                  >
-                    <code>{feed.rkey}</code>
-                  </CardDescription>
 
-                  {feed.description && (
-                    <CardDescription>{feed.description}</CardDescription>
-                  )}
-                </CardHeader>
-
-                <CardFooter className="py-0 pr-4 gap-2">
-                  {!feed.title && (
-                    <Button variant="secondary" className="hidden sm:flex">
-                      <FileSignature className="mr-2 h-4 w-4" /> Finalize
-                    </Button>
-                  )}
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuGroup>
-                        <DropdownMenuItem>
-                          <Edit className="mr-2 h-4 w-4" /> Edit
-                        </DropdownMenuItem>
-
-                        {feed.title ? (
-                          <DropdownMenuItem>
-                            <PlaneLanding className="mr-2 h-4 w-4" /> Unpublish
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem className="sm:hidden">
-                            <FileSignature className="mr-2 h-4 w-4" /> Finalize
-                          </DropdownMenuItem>
-                        )}
-
-                        <DropdownMenuItem>
-                          <Trash className="mr-2 h-4 w-4" /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuGroup>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </CardFooter>
-              </Card>
-            ))
+                  {publishedFeeds.map((feed, i) => (
+                    <FeedCard feed={feed} key={i} />
+                  ))}
+                </div>
+              )}
+            </>
           ) : (
             <>
               <Image

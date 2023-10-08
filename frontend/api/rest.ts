@@ -10,7 +10,7 @@ export class RestAPI {
     private did: string
   ) {}
 
-  async getFeeds(): Promise<IFeed[]> {
+  async getFeeds(): Promise<{ published: IFeed[]; unpublished: IFeed[] }> {
     const atmosfeedURL = new URL(this.apiURL + "admin/feeds");
 
     atmosfeedURL.search = new URLSearchParams({
@@ -33,24 +33,27 @@ export class RestAPI {
       throw new Error("could not fetch feeds from Bluesky");
     }
 
-    return atmosfeedFeeds
-      .map((v) => {
+    return atmosfeedFeeds.reduce(
+      (acc, v) => {
         const bskyFeed = bskyFeeds.data.feeds.find(
           (f) => new AtUri(f.uri).rkey === v
         );
 
         if (bskyFeed) {
-          return {
+          acc.published.push({
             rkey: v,
             title: bskyFeed.displayName,
             description: bskyFeed.description,
-          };
+          });
+        } else {
+          acc.unpublished.push({
+            rkey: v,
+          });
         }
 
-        return {
-          rkey: v,
-        };
-      })
-      .sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+        return acc;
+      },
+      { published: [] as IFeed[], unpublished: [] as IFeed[] }
+    );
   }
 }
