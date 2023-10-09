@@ -90,6 +90,14 @@ const setupFormSchema = z.object({
   acceptedPrivacyPolicy: z.literal<boolean>(true),
 });
 
+const createFeedSchema = z.object({
+  rkey: z.string().min(1, "Resource key is required"),
+
+  classifier: z.instanceof(File, {
+    message: "Classifier is required",
+  }),
+});
+
 export default function Home() {
   const { setTheme } = useTheme();
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
@@ -120,6 +128,13 @@ export default function Home() {
       acceptedPrivacyPolicy: false,
     },
   });
+
+  const createFeedForm = useForm<z.infer<typeof createFeedSchema>>({
+    resolver: zodResolver(createFeedSchema),
+    defaultValues: {},
+  });
+
+  const [createFeedDialogOpen, setCreateFeedDialogOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -297,7 +312,7 @@ export default function Home() {
                 <div className="flex justify-between items-center gap-2 mb-2">
                   <h2 className="text-xl font-medium">Unpublished Feeds</h2>
 
-                  <Button>
+                  <Button onClick={() => setCreateFeedDialogOpen(true)}>
                     <Plus className="sm:mr-2 h-4 w-4" />{" "}
                     <span className="hidden sm:inline">Create Feed</span>
                   </Button>
@@ -557,6 +572,80 @@ export default function Home() {
 
           <DialogFooter>
             <Button type="submit" form="setup">
+              Next
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        onOpenChange={(v) => setCreateFeedDialogOpen(v)}
+        open={createFeedDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Create Feed</DialogTitle>
+          </DialogHeader>
+
+          <Form {...createFeedForm}>
+            <form
+              onSubmit={createFeedForm.handleSubmit((v) => {
+                // TODO: POST to API here
+
+                setCreateFeedDialogOpen(false);
+              })}
+              className="space-y-4"
+              id="create-feed"
+            >
+              <FormField
+                control={createFeedForm.control}
+                name="rkey"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Resource Key</FormLabel>
+                    <FormDescription>
+                      Machine-readable key for the feed.
+                    </FormDescription>
+
+                    <FormControl>
+                      <Input type="text" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={createFeedForm.control}
+                name="classifier"
+                render={({ field: { value, onChange, ...rest } }) => (
+                  <FormItem>
+                    <FormLabel>Classifier</FormLabel>
+                    <FormDescription>
+                      Exported Scale function (.scale file) to use as the
+                      classifier for the feed.
+                    </FormDescription>
+
+                    <FormControl>
+                      <Input
+                        type="file"
+                        placeholder="classifier.scale"
+                        accept="application/octet-stream"
+                        onChange={(event) =>
+                          onChange(event.target.files && event.target.files[0])
+                        }
+                        {...rest}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </form>
+          </Form>
+
+          <DialogFooter>
+            <Button type="submit" form="create-feed">
               Next
             </Button>
           </DialogFooter>
