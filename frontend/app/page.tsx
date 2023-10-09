@@ -595,6 +595,12 @@ export default function Home() {
                 await applyFeed(v.rkey, v.classifier);
 
                 setCreateFeedDialogOpen(false);
+
+                toast({
+                  title: "Feed Created Successfullyy",
+                  description:
+                    "Your classifier has been uploaded successfully.",
+                });
               })}
               className="space-y-4"
               id="create-feed"
