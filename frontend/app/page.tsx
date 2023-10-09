@@ -146,6 +146,8 @@ export default function Home() {
     unpublishedFeeds,
     publishedFeeds,
 
+    applyFeed,
+
     deleteData,
 
     loading,
@@ -589,8 +591,8 @@ export default function Home() {
 
           <Form {...createFeedForm}>
             <form
-              onSubmit={createFeedForm.handleSubmit((v) => {
-                // TODO: POST to API here
+              onSubmit={createFeedForm.handleSubmit(async (v) => {
+                await applyFeed(v.rkey, v.classifier);
 
                 setCreateFeedDialogOpen(false);
               })}
@@ -645,8 +647,13 @@ export default function Home() {
           </Form>
 
           <DialogFooter>
-            <Button type="submit" form="create-feed">
-              Next
+            <Button type="submit" form="create-feed" disabled={loading}>
+              {loading ? (
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="mr-2 h-4 w-4" />
+              )}{" "}
+              Create Feed
             </Button>
           </DialogFooter>
         </DialogContent>

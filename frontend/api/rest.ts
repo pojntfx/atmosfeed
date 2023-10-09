@@ -56,4 +56,22 @@ export class RestAPI {
       { published: [] as IFeed[], unpublished: [] as IFeed[] }
     );
   }
+
+  async applyFeed(rkey: string, classifier: File) {
+    const atmosfeedURL = new URL(this.apiURL + "admin/feeds");
+
+    atmosfeedURL.search = new URLSearchParams({
+      rkey,
+      service: this.service,
+    }).toString();
+
+    await fetch(atmosfeedURL.toString(), {
+      method: "PUT",
+      body: classifier,
+      headers: {
+        Authorization: "Bearer " + this.accessJWT,
+        "Content-Type": "application/octet-stream",
+      },
+    });
+  }
 }

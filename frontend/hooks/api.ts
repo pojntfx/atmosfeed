@@ -118,6 +118,27 @@ export const useAPI = (
     unpublishedFeeds,
     publishedFeeds,
 
+    applyFeed: async (rkey: string, classifier: File) => {
+      if (!api) {
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        await api.applyFeed(rkey, classifier);
+
+        const res = await api.getFeeds();
+
+        setUnpublishedFeeds(res.unpublished);
+        setPublishedFeeds(res.published);
+      } catch (e) {
+        handleError(e as Error, false);
+      } finally {
+        setLoading(false);
+      }
+    },
+
     deleteData: async () => {
       if (!api) {
         return;
