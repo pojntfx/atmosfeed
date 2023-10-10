@@ -74,10 +74,10 @@ var publishCmd = &cobra.Command{
 
 func init() {
 	publishCmd.PersistentFlags().String(feedRkeyFlag, "trending", "Machine-readable key for the feed")
-	publishCmd.PersistentFlags().String(feedNameFlag, "Atmosfeed Trending", "Human-readable name for the feed (ignored for `--delete`)")
-	publishCmd.PersistentFlags().String(feedDescriptionFlag, "An example trending feed for Atmosfeed", "Description for the feed (ignored for `--delete`)")
+	publishCmd.PersistentFlags().String(feedNameFlag, "Atmosfeed Trending", "Human-readable name for the feed)")
+	publishCmd.PersistentFlags().String(feedDescriptionFlag, "An example trending feed for Atmosfeed", "Description for the feed")
 
-	publishCmd.PersistentFlags().String(feedGeneratorDIDFlag, "did:web:atmosfeed-feeds.serveo.net", "DID of the feed generator (typically the hostname of the publicly reachable URL) (ignored for `--delete`)")
+	publishCmd.PersistentFlags().String(feedGeneratorDIDFlag, "did:web:atmosfeed-feeds.serveo.net", "DID of the feed generator (typically the hostname of the publicly reachable URL)")
 
 	viper.AutomaticEnv()
 

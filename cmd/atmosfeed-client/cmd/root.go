@@ -37,8 +37,8 @@ func Execute() error {
 	rootCmd.PersistentFlags().String(atmosfeedURLFlag, "http://localhost:1337", "Atmosfeed server URL")
 
 	rootCmd.PersistentFlags().String(pdsURLFlag, "https://bsky.social", "PDS URL")
-	rootCmd.PersistentFlags().String(usernameFlag, "example.bsky.social", "Bluesky username (ignored if `--publish` is not provided)")
-	rootCmd.PersistentFlags().String(passwordFlag, "", "Bluesky password, preferably an app password (get one from https://bsky.app/settings/app-passwords, ignored if `--publish` is not provided)")
+	rootCmd.PersistentFlags().String(usernameFlag, "example.bsky.social", "Bluesky username")
+	rootCmd.PersistentFlags().String(passwordFlag, "", "Bluesky password, preferably an app password (get one from https://bsky.app/settings/app-passwords)")
 
 	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
 		return err

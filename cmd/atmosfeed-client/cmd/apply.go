@@ -71,7 +71,7 @@ var applyCmd = &cobra.Command{
 func init() {
 	applyCmd.PersistentFlags().String(feedRkeyFlag, "trending", "Machine-readable key for the feed")
 
-	applyCmd.PersistentFlags().String(feedClassifierFlag, "out/local-trending-latest.scale", "Path to the feed classifier to upload (ignored for `--delete` or if `--publish` is not provided)")
+	applyCmd.PersistentFlags().String(feedClassifierFlag, "out/local-trending-latest.scale", "Path to the feed classifier to upload")
 
 	viper.AutomaticEnv()
 

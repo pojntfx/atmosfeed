@@ -86,6 +86,7 @@ const setupFormSchema = z.object({
 
   service: z.string().min(1, "Service is required"),
   atmosfeedAPI: z.string().min(1, "Atmosfeed API is required"),
+  feedGeneratorDID: z.string().min(1, "Feed generator DID is required"),
 
   acceptedPrivacyPolicy: z.literal<boolean>(true),
 });
@@ -115,6 +116,11 @@ export default function Home() {
     "atmosfeed.atmosfeedURL",
     process.env.ATMOSFEED_API_DEFAULT || "https://manager.atmosfeed.p8.lu"
   );
+  const [feedGeneratorDID, setFeedGeneratorDID] = useLocalStorage(
+    "atmosfeed.feedGeneratorDID",
+    process.env.ATMOSFEED_FEED_GENERATOR_DID_DEFAULT ||
+      "did:web:atmosfeed-feeds.serveo.net"
+  );
 
   const setupForm = useForm<z.infer<typeof setupFormSchema>>({
     resolver: zodResolver(setupFormSchema),
@@ -124,6 +130,7 @@ export default function Home() {
 
       service,
       atmosfeedAPI,
+      feedGeneratorDID,
 
       acceptedPrivacyPolicy: false,
     },
@@ -439,6 +446,7 @@ export default function Home() {
 
                 setService(v.service);
                 setAtmosfeedAPI(v.atmosfeedAPI);
+                setFeedGeneratorDID(v.feedGeneratorDID);
 
                 setLoginDialogOpen(false);
               })}
@@ -557,6 +565,27 @@ export default function Home() {
                           <FormDescription>
                             The URL that Atmosfeed&apos;s API is hosted on; most
                             users don&apos;t need to change this.
+                          </FormDescription>
+
+                          <FormControl>
+                            <Input type="text" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={setupForm.control}
+                      name="feedGeneratorDID"
+                      render={({ field }) => (
+                        <FormItem className="mt-4">
+                          <FormLabel>Feed Generator DID</FormLabel>
+
+                          <FormDescription>
+                            The DID that the feed generator is reachable under,
+                            typically the hostname of the publically reachable
+                            URL; most users don&apos;t need to change this.
                           </FormDescription>
 
                           <FormControl>
