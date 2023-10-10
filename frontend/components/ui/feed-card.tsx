@@ -16,10 +16,10 @@ import {
   DropdownMenuTrigger,
 } from "./dropdown-menu";
 
-export const FeedCard: React.FC<{ feed: IFeed }> = ({
-  feed,
-  ...otherProps
-}) => (
+export const FeedCard: React.FC<{
+  feed: IFeed;
+  onFinalizeFeed: (rkey: string) => void;
+}> = ({ feed, onFinalizeFeed, ...otherProps }) => (
   <Card className="flex items-center justify-between" {...otherProps}>
     <CardHeader>
       <div className="text-2xl font-semibold leading-none tracking-tight flex items-center justify-between">
@@ -36,7 +36,11 @@ export const FeedCard: React.FC<{ feed: IFeed }> = ({
 
     <CardFooter className="py-0 pr-4 gap-2">
       {!feed.title && (
-        <Button variant="secondary" className="hidden sm:flex">
+        <Button
+          variant="secondary"
+          className="hidden sm:flex"
+          onClick={() => onFinalizeFeed(feed.rkey)}
+        >
           <FileSignature className="mr-2 h-4 w-4" /> Finalize
         </Button>
       )}

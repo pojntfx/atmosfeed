@@ -67,6 +67,7 @@ import {
   Moon,
   MoonStar,
   Plus,
+  Send,
   Sun,
   TrashIcon,
   User,
@@ -97,6 +98,11 @@ const createFeedSchema = z.object({
   classifier: z.instanceof(File, {
     message: "Classifier is required",
   }),
+});
+
+const finalizeFeedSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  description: z.string().min(1, "Description is required"),
 });
 
 export default function Home() {
@@ -141,6 +147,11 @@ export default function Home() {
     defaultValues: {},
   });
 
+  const finalizeFeedForm = useForm<z.infer<typeof finalizeFeedSchema>>({
+    resolver: zodResolver(finalizeFeedSchema),
+    defaultValues: {},
+  });
+
   const [createFeedDialogOpen, setCreateFeedDialogOpen] = useState(false);
 
   const { toast } = useToast();
@@ -154,6 +165,7 @@ export default function Home() {
     publishedFeeds,
 
     applyFeed,
+    finalizeFeed,
 
     deleteData,
 
@@ -176,6 +188,8 @@ export default function Home() {
             description: `An error could not be handled. The error is: "${err?.message}"`,
           })
   );
+
+  const [selectedRkey, setSelectedRkey] = useState("");
 
   return (
     <>
@@ -329,7 +343,11 @@ export default function Home() {
 
                 {unpublishedFeeds.length > 0
                   ? unpublishedFeeds.map((feed, i) => (
-                      <FeedCard feed={feed} key={i} />
+                      <FeedCard
+                        feed={feed}
+                        onFinalizeFeed={(rkey) => setSelectedRkey(rkey)}
+                        key={i}
+                      />
                     ))
                   : "No feeds yet"}
               </div>
@@ -341,7 +359,11 @@ export default function Home() {
                   </div>
 
                   {publishedFeeds.map((feed, i) => (
-                    <FeedCard feed={feed} key={i} />
+                    <FeedCard
+                      feed={feed}
+                      onFinalizeFeed={(rkey) => setSelectedRkey(rkey)}
+                      key={i}
+                    />
                   ))}
                 </div>
               )}
@@ -689,6 +711,92 @@ export default function Home() {
                 <Plus className="mr-2 h-4 w-4" />
               )}{" "}
               Create Feed
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        onOpenChange={(v) => setSelectedRkey("")}
+        open={selectedRkey !== ""}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              Finalize and Publish Feed &quot;{selectedRkey}&quot;
+            </DialogTitle>
+            <DialogDescription>
+              This will make this feed available for other Bluesky users.
+            </DialogDescription>
+          </DialogHeader>
+
+          <Form {...finalizeFeedForm}>
+            <form
+              onSubmit={finalizeFeedForm.handleSubmit(async (v) => {
+                await finalizeFeed(
+                  feedGeneratorDID,
+                  selectedRkey,
+                  v.name,
+                  v.description
+                );
+
+                setSelectedRkey("");
+
+                toast({
+                  title: "Feed Finalized and Published Successfullyy",
+                  description:
+                    "Your feed has been made available to other Bluesky users.",
+                });
+              })}
+              className="space-y-4"
+              id="finalize-feed"
+            >
+              <FormField
+                control={finalizeFeedForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormDescription>
+                      Human-readable name for the feed.
+                    </FormDescription>
+
+                    <FormControl>
+                      <Input type="text" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={finalizeFeedForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormDescription>
+                      Short description to be shown for the feed.
+                    </FormDescription>
+
+                    <FormControl>
+                      <Input type="text" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </form>
+          </Form>
+
+          <DialogFooter>
+            <Button type="submit" form="finalize-feed" disabled={loading}>
+              {loading ? (
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}{" "}
+              Finalize and Publish Feed
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -138,6 +138,32 @@ export const useAPI = (
         setLoading(false);
       }
     },
+    finalizeFeed: async (
+      feedGeneratorDID: string,
+      selectedFeed: string,
+      name: string,
+      description: string
+    ) => {
+      if (!api) {
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        // TODO: Connect `BskyAgent` API for feed publishing here
+        // await api.finalizeFeed(feedGeneratorDID, selectedFeed, name, description);
+
+        const res = await api.getFeeds();
+
+        setUnpublishedFeeds(res.unpublished);
+        setPublishedFeeds(res.published);
+      } catch (e) {
+        handleError(e as Error, false);
+      } finally {
+        setLoading(false);
+      }
+    },
 
     deleteData: async () => {
       if (!api) {
