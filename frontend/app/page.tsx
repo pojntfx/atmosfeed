@@ -60,6 +60,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Database,
   DownloadCloud,
+  Edit,
   Laptop,
   Loader,
   LogIn,
@@ -95,6 +96,12 @@ const setupFormSchema = z.object({
 const createFeedSchema = z.object({
   rkey: z.string().min(1, "Resource key is required"),
 
+  classifier: z.instanceof(File, {
+    message: "Classifier is required",
+  }),
+});
+
+const editFeedClassifierSchema = z.object({
   classifier: z.instanceof(File, {
     message: "Classifier is required",
   }),
@@ -147,6 +154,11 @@ export default function Home() {
     defaultValues: {},
   });
 
+  const editFeedClassifierForm = useForm<z.infer<typeof createFeedSchema>>({
+    resolver: zodResolver(editFeedClassifierSchema),
+    defaultValues: {},
+  });
+
   const finalizeFeedForm = useForm<z.infer<typeof finalizeFeedSchema>>({
     resolver: zodResolver(finalizeFeedSchema),
     defaultValues: {},
@@ -189,7 +201,9 @@ export default function Home() {
           })
   );
 
-  const [selectedRkey, setSelectedRkey] = useState("");
+  const [selectedRkeyFinalization, setSelectedFinalizationRkey] = useState("");
+  const [selectedRkeyClassifierEdit, setSelectedRkeyClassifierEdit] =
+    useState("");
 
   return (
     <>
@@ -345,7 +359,12 @@ export default function Home() {
                   ? unpublishedFeeds.map((feed, i) => (
                       <FeedCard
                         feed={feed}
-                        onFinalizeFeed={(rkey) => setSelectedRkey(rkey)}
+                        onFinalizeFeed={(rkey) =>
+                          setSelectedFinalizationRkey(rkey)
+                        }
+                        onEditFeedClassifier={(rkey) =>
+                          setSelectedRkeyClassifierEdit(rkey)
+                        }
                         key={i}
                       />
                     ))
@@ -361,7 +380,9 @@ export default function Home() {
                   {publishedFeeds.map((feed, i) => (
                     <FeedCard
                       feed={feed}
-                      onFinalizeFeed={(rkey) => setSelectedRkey(rkey)}
+                      onFinalizeFeed={(rkey) =>
+                        setSelectedFinalizationRkey(rkey)
+                      }
                       key={i}
                     />
                   ))}
@@ -717,13 +738,13 @@ export default function Home() {
       </Dialog>
 
       <Dialog
-        onOpenChange={(v) => setSelectedRkey("")}
-        open={selectedRkey !== ""}
+        onOpenChange={() => setSelectedFinalizationRkey("")}
+        open={selectedRkeyFinalization !== ""}
       >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>
-              Finalize and Publish Feed &quot;{selectedRkey}&quot;
+              Finalize and Publish Feed &quot;{selectedRkeyFinalization}&quot;
             </DialogTitle>
             <DialogDescription>
               This will make this feed available for other Bluesky users.
@@ -735,12 +756,12 @@ export default function Home() {
               onSubmit={finalizeFeedForm.handleSubmit(async (v) => {
                 await finalizeFeed(
                   feedGeneratorDID,
-                  selectedRkey,
+                  selectedRkeyFinalization,
                   v.name,
                   v.description
                 );
 
-                setSelectedRkey("");
+                setSelectedFinalizationRkey("");
 
                 toast({
                   title: "Feed Finalized and Published Successfullyy",
@@ -797,6 +818,78 @@ export default function Home() {
                 <Send className="mr-2 h-4 w-4" />
               )}{" "}
               Finalize and Publish Feed
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        onOpenChange={() => setSelectedRkeyClassifierEdit("")}
+        open={selectedRkeyClassifierEdit !== ""}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              Edit Feed &quot;{selectedRkeyClassifierEdit}&quot;
+            </DialogTitle>
+          </DialogHeader>
+
+          <Form {...editFeedClassifierForm}>
+            <form
+              onSubmit={editFeedClassifierForm.handleSubmit(async (v) => {
+                await applyFeed(selectedRkeyClassifierEdit, v.classifier);
+
+                setSelectedRkeyClassifierEdit("");
+
+                toast({
+                  title: "Feed Edited Successfullyy",
+                  description: "Your classifier has been changed successfully.",
+                });
+              })}
+              className="space-y-4"
+              id="edit-feed-classifier"
+            >
+              <FormField
+                control={editFeedClassifierForm.control}
+                name="classifier"
+                render={({ field: { value, onChange, ...rest } }) => (
+                  <FormItem>
+                    <FormLabel>Classifier</FormLabel>
+                    <FormDescription>
+                      Exported Scale function (.scale file) to use as the
+                      classifier for the feed.
+                    </FormDescription>
+
+                    <FormControl>
+                      <Input
+                        type="file"
+                        placeholder="classifier.scale"
+                        accept="application/octet-stream"
+                        onChange={(event) =>
+                          onChange(event.target.files && event.target.files[0])
+                        }
+                        {...rest}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </form>
+          </Form>
+
+          <DialogFooter>
+            <Button
+              type="submit"
+              form="edit-feed-classifier"
+              disabled={loading}
+            >
+              {loading ? (
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Edit className="mr-2 h-4 w-4" />
+              )}{" "}
+              Edit Feed
             </Button>
           </DialogFooter>
         </DialogContent>
