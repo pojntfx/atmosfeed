@@ -1,6 +1,8 @@
 import { AtUri, BskyAgent } from "@atproto/api";
 import { IFeed } from "./models";
 
+const lexiconFeedGenerator = "app.bsky.feed.generator";
+
 export class RestAPI {
   constructor(
     private apiURL: URL,
@@ -71,6 +73,26 @@ export class RestAPI {
       headers: {
         Authorization: "Bearer " + this.accessJWT,
         "Content-Type": "application/octet-stream",
+      },
+    });
+  }
+
+  async finalizeFeed(
+    feedGeneratorDID: string,
+    rkey: string,
+    name: string,
+    description: string
+  ) {
+    await this.agent.com.atproto.repo.createRecord({
+      collection: lexiconFeedGenerator,
+      repo: this.did,
+      rkey: rkey,
+
+      record: {
+        createdAt: new Date().toISOString(),
+        description: description,
+        did: feedGeneratorDID,
+        displayName: name,
       },
     });
   }

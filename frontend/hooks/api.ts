@@ -140,7 +140,7 @@ export const useAPI = (
     },
     finalizeFeed: async (
       feedGeneratorDID: string,
-      selectedFeed: string,
+      rkey: string,
       name: string,
       description: string
     ) => {
@@ -151,8 +151,7 @@ export const useAPI = (
       setLoading(true);
 
       try {
-        // TODO: Connect `BskyAgent` API for feed publishing here
-        // await api.finalizeFeed(feedGeneratorDID, selectedFeed, name, description);
+        await api.finalizeFeed(feedGeneratorDID, rkey, name, description);
 
         const res = await api.getFeeds();
 
