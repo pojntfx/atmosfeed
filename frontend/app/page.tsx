@@ -75,7 +75,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useLocalStorage } from "usehooks-ts";
 import * as z from "zod";
@@ -101,7 +101,7 @@ const createFeedSchema = z.object({
   }),
 });
 
-const editFeedClassifierSchema = z.object({
+const editClassifierSchema = z.object({
   classifier: z.instanceof(File, {
     message: "Classifier is required",
   }),
@@ -110,6 +110,12 @@ const editFeedClassifierSchema = z.object({
 const finalizeFeedSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().min(1, "Description is required"),
+});
+
+const editFeedSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  description: z.string().min(1, "Description is required"),
+  classifier: z.instanceof(File).optional(),
 });
 
 export default function Home() {
@@ -154,13 +160,18 @@ export default function Home() {
     defaultValues: {},
   });
 
-  const editFeedClassifierForm = useForm<z.infer<typeof createFeedSchema>>({
-    resolver: zodResolver(editFeedClassifierSchema),
+  const editClassifierForm = useForm<z.infer<typeof createFeedSchema>>({
+    resolver: zodResolver(editClassifierSchema),
     defaultValues: {},
   });
 
   const finalizeFeedForm = useForm<z.infer<typeof finalizeFeedSchema>>({
     resolver: zodResolver(finalizeFeedSchema),
+    defaultValues: {},
+  });
+
+  const editFeedForm = useForm<z.infer<typeof editFeedSchema>>({
+    resolver: zodResolver(editFeedSchema),
     defaultValues: {},
   });
 
@@ -204,6 +215,22 @@ export default function Home() {
   const [selectedRkeyFinalization, setSelectedFinalizationRkey] = useState("");
   const [selectedRkeyClassifierEdit, setSelectedRkeyClassifierEdit] =
     useState("");
+
+  const [selectedRkeyFeedEdit, setSelectedRkeyFeedEdit] = useState("");
+  useEffect(() => {
+    const feed = publishedFeeds.find((f) => f.rkey === selectedRkeyFeedEdit);
+    if (!feed) {
+      return;
+    }
+
+    if (feed.title) {
+      editFeedForm.setValue("name", feed.title);
+    }
+
+    if (feed.description) {
+      editFeedForm.setValue("description", feed.description);
+    }
+  }, [selectedRkeyFeedEdit, publishedFeeds, editFeedForm]);
 
   return (
     <>
@@ -362,7 +389,7 @@ export default function Home() {
                         onFinalizeFeed={(rkey) =>
                           setSelectedFinalizationRkey(rkey)
                         }
-                        onEditFeedClassifier={(rkey) =>
+                        onEditClassifier={(rkey) =>
                           setSelectedRkeyClassifierEdit(rkey)
                         }
                         key={i}
@@ -383,6 +410,7 @@ export default function Home() {
                       onFinalizeFeed={(rkey) =>
                         setSelectedFinalizationRkey(rkey)
                       }
+                      onEditFeed={(rkey) => setSelectedRkeyFeedEdit(rkey)}
                       key={i}
                     />
                   ))}
@@ -834,9 +862,9 @@ export default function Home() {
             </DialogTitle>
           </DialogHeader>
 
-          <Form {...editFeedClassifierForm}>
+          <Form {...editClassifierForm}>
             <form
-              onSubmit={editFeedClassifierForm.handleSubmit(async (v) => {
+              onSubmit={editClassifierForm.handleSubmit(async (v) => {
                 await applyFeed(selectedRkeyClassifierEdit, v.classifier);
 
                 setSelectedRkeyClassifierEdit("");
@@ -847,10 +875,10 @@ export default function Home() {
                 });
               })}
               className="space-y-4"
-              id="edit-feed-classifier"
+              id="edit-classifier"
             >
               <FormField
-                control={editFeedClassifierForm.control}
+                control={editClassifierForm.control}
                 name="classifier"
                 render={({ field: { value, onChange, ...rest } }) => (
                   <FormItem>
@@ -879,11 +907,123 @@ export default function Home() {
           </Form>
 
           <DialogFooter>
-            <Button
-              type="submit"
-              form="edit-feed-classifier"
-              disabled={loading}
+            <Button type="submit" form="edit-classifier" disabled={loading}>
+              {loading ? (
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Edit className="mr-2 h-4 w-4" />
+              )}{" "}
+              Edit Feed
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        onOpenChange={() => setSelectedRkeyFeedEdit("")}
+        open={selectedRkeyFeedEdit !== ""}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              Edit Feed &quot;{selectedRkeyFeedEdit}&quot;
+            </DialogTitle>
+          </DialogHeader>
+
+          <Form {...editFeedForm}>
+            <form
+              onSubmit={editFeedForm.handleSubmit(async (v) => {
+                if (
+                  editFeedForm.formState.dirtyFields.classifier &&
+                  v.classifier
+                ) {
+                  await applyFeed(selectedRkeyFeedEdit, v.classifier);
+                }
+
+                if (
+                  editFeedForm.formState.dirtyFields.name ||
+                  editFeedForm.formState.dirtyFields.description
+                ) {
+                  // TODO: Update published fields/swap record
+                }
+
+                setSelectedRkeyFeedEdit("");
+
+                toast({
+                  title: "Feed Edited Successfullyy",
+                  description: "Your feed has been changed successfully.",
+                });
+              })}
+              className="space-y-4"
+              id="edit-feed"
             >
+              <FormField
+                control={editFeedForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormDescription>
+                      Human-readable name for the feed.
+                    </FormDescription>
+
+                    <FormControl>
+                      <Input type="text" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editFeedForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormDescription>
+                      Short description to be shown for the feed.
+                    </FormDescription>
+
+                    <FormControl>
+                      <Input type="text" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editFeedForm.control}
+                name="classifier"
+                render={({ field: { value, onChange, ...rest } }) => (
+                  <FormItem>
+                    <FormLabel>Classifier</FormLabel>
+                    <FormDescription>
+                      Exported Scale function (.scale file) to use as the
+                      classifier for the feed. Leave empty to keep unchanged.
+                    </FormDescription>
+
+                    <FormControl>
+                      <Input
+                        type="file"
+                        placeholder="classifier.scale"
+                        accept="application/octet-stream"
+                        onChange={(event) =>
+                          onChange(event.target.files && event.target.files[0])
+                        }
+                        {...rest}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </form>
+          </Form>
+
+          <DialogFooter>
+            <Button type="submit" form="edit-feed" disabled={loading}>
               {loading ? (
                 <Loader className="mr-2 h-4 w-4 animate-spin" />
               ) : (

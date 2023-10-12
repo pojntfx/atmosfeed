@@ -19,8 +19,15 @@ import {
 export const FeedCard: React.FC<{
   feed: IFeed;
   onFinalizeFeed: (rkey: string) => void;
-  onEditFeedClassifier?: (rkey: string) => void;
-}> = ({ feed, onFinalizeFeed, onEditFeedClassifier, ...otherProps }) => (
+  onEditClassifier?: (rkey: string) => void;
+  onEditFeed?: (rkey: string) => void;
+}> = ({
+  feed,
+  onFinalizeFeed,
+  onEditClassifier,
+  onEditFeed,
+  ...otherProps
+}) => (
   <Card className="flex items-center justify-between" {...otherProps}>
     <CardHeader>
       <div className="text-2xl font-semibold leading-none tracking-tight flex items-center justify-between">
@@ -56,7 +63,9 @@ export const FeedCard: React.FC<{
           <DropdownMenuGroup>
             <DropdownMenuItem
               onClick={() =>
-                feed.title ? undefined : onEditFeedClassifier?.(feed.rkey)
+                feed.title
+                  ? onEditFeed?.(feed.rkey)
+                  : onEditClassifier?.(feed.rkey)
               }
             >
               <Edit className="mr-2 h-4 w-4" /> Edit
