@@ -32,7 +32,9 @@ export class RestAPI {
     });
 
     if (!bskyFeeds.success) {
-      throw new Error("could not fetch feeds from Bluesky");
+      throw new Error(
+        `could not fetch feeds from Bluesky: ${JSON.stringify(bskyFeeds)}`
+      );
     }
 
     return atmosfeedFeeds.reduce(
@@ -83,7 +85,7 @@ export class RestAPI {
     name: string,
     description: string
   ) {
-    await this.agent.com.atproto.repo.createRecord({
+    const res = await this.agent.com.atproto.repo.createRecord({
       collection: lexiconFeedGenerator,
       repo: this.did,
       rkey: rkey,
@@ -95,6 +97,12 @@ export class RestAPI {
         displayName: name,
       },
     });
+
+    if (!res.success) {
+      throw new Error(
+        `could not finalize feed on Bluesky: ${JSON.stringify(res)}`
+      );
+    }
   }
 
   async republishFeed(
@@ -110,10 +118,12 @@ export class RestAPI {
     });
 
     if (!oldFeed.success) {
-      throw new Error("could not fetch existing feed from Bluesky");
+      throw new Error(
+        `could not fetch existing feed from Bluesky: ${JSON.stringify(oldFeed)}`
+      );
     }
 
-    await this.agent.com.atproto.repo.putRecord({
+    const res = await this.agent.com.atproto.repo.putRecord({
       collection: lexiconFeedGenerator,
       repo: this.did,
       rkey: rkey,
@@ -127,5 +137,11 @@ export class RestAPI {
 
       swapRecord: oldFeed.data.cid,
     });
+
+    if (!res.success) {
+      throw new Error(
+        `could not republish feed on Bluesky: ${JSON.stringify(res)}`
+      );
+    }
   }
 }
