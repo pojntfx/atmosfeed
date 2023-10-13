@@ -96,4 +96,36 @@ export class RestAPI {
       },
     });
   }
+
+  async republishFeed(
+    feedGeneratorDID: string,
+    rkey: string,
+    name: string,
+    description: string
+  ) {
+    const oldFeed = await this.agent.com.atproto.repo.getRecord({
+      collection: lexiconFeedGenerator,
+      repo: this.did,
+      rkey: rkey,
+    });
+
+    if (!oldFeed.success) {
+      throw new Error("could not fetch existing feed from Bluesky");
+    }
+
+    await this.agent.com.atproto.repo.putRecord({
+      collection: lexiconFeedGenerator,
+      repo: this.did,
+      rkey: rkey,
+
+      record: {
+        createdAt: new Date().toISOString(),
+        description: description,
+        did: feedGeneratorDID,
+        displayName: name,
+      },
+
+      swapRecord: oldFeed.data.cid,
+    });
+  }
 }

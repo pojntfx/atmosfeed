@@ -163,6 +163,31 @@ export const useAPI = (
         setLoading(false);
       }
     },
+    republishFeed: async (
+      feedGeneratorDID: string,
+      rkey: string,
+      name: string,
+      description: string
+    ) => {
+      if (!api) {
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        await api.republishFeed(feedGeneratorDID, rkey, name, description);
+
+        const res = await api.getFeeds();
+
+        setUnpublishedFeeds(res.unpublished);
+        setPublishedFeeds(res.published);
+      } catch (e) {
+        handleError(e as Error, false);
+      } finally {
+        setLoading(false);
+      }
+    },
 
     deleteData: async () => {
       if (!api) {

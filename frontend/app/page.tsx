@@ -108,12 +108,18 @@ const editClassifierSchema = z.object({
 });
 
 const finalizeFeedSchema = z.object({
-  name: z.string().min(1, "Name is required"),
+  name: z
+    .string()
+    .min(1, "Name is required")
+    .max(24, "Name must be shorter than 24 characters"),
   description: z.string().min(1, "Description is required"),
 });
 
 const editFeedSchema = z.object({
-  name: z.string().min(1, "Name is required"),
+  name: z
+    .string()
+    .min(1, "Name is required")
+    .max(24, "Name must be shorter than 24 characters"),
   description: z.string().min(1, "Description is required"),
   classifier: z.instanceof(File).optional(),
 });
@@ -189,6 +195,7 @@ export default function Home() {
 
     applyFeed,
     finalizeFeed,
+    republishFeed,
 
     deleteData,
 
@@ -697,7 +704,7 @@ export default function Home() {
                 setCreateFeedDialogOpen(false);
 
                 toast({
-                  title: "Feed Created Successfullyy",
+                  title: "Feed Created Successfully",
                   description:
                     "Your classifier has been uploaded successfully.",
                 });
@@ -792,7 +799,7 @@ export default function Home() {
                 setSelectedFinalizationRkey("");
 
                 toast({
-                  title: "Feed Finalized and Published Successfullyy",
+                  title: "Feed Finalized and Published Successfully",
                   description:
                     "Your feed has been made available to other Bluesky users.",
                 });
@@ -870,7 +877,7 @@ export default function Home() {
                 setSelectedRkeyClassifierEdit("");
 
                 toast({
-                  title: "Feed Edited Successfullyy",
+                  title: "Feed Edited Successfully",
                   description: "Your classifier has been changed successfully.",
                 });
               })}
@@ -944,13 +951,18 @@ export default function Home() {
                   editFeedForm.formState.dirtyFields.name ||
                   editFeedForm.formState.dirtyFields.description
                 ) {
-                  // TODO: Update published fields/swap record
+                  await republishFeed(
+                    feedGeneratorDID,
+                    selectedRkeyFeedEdit,
+                    v.name,
+                    v.description
+                  );
                 }
 
                 setSelectedRkeyFeedEdit("");
 
                 toast({
-                  title: "Feed Edited Successfullyy",
+                  title: "Feed Edited Successfully",
                   description: "Your feed has been changed successfully.",
                 });
               })}
@@ -1054,7 +1066,7 @@ export default function Home() {
                 await deleteData();
 
                 toast({
-                  title: "Data Deleted Successfullyy",
+                  title: "Data Deleted Successfully",
                   description:
                     "Your data has successfully been deleted from our servers and you have been logged out.",
                 });
