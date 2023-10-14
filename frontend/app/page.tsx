@@ -197,6 +197,7 @@ export default function Home() {
     finalizeFeed,
     republishFeed,
     deleteFeed,
+    unpublishFeed,
 
     deleteData,
 
@@ -224,6 +225,8 @@ export default function Home() {
   const [selectedRkeyClassifierEdit, setSelectedRkeyClassifierEdit] =
     useState("");
   const [selectedRkeyClassifierDelete, setSelectedRkeyClassifierDelete] =
+    useState("");
+  const [selectedRkeyFeedUnpublish, setSelectedRkeyFeedUnpublish] =
     useState("");
 
   const [selectedRkeyFeedEdit, setSelectedRkeyFeedEdit] = useState("");
@@ -424,6 +427,9 @@ export default function Home() {
                         setSelectedFinalizationRkey(rkey)
                       }
                       onEditFeed={(rkey) => setSelectedRkeyFeedEdit(rkey)}
+                      onUnpublishFeed={(rkey) =>
+                        setSelectedRkeyFeedUnpublish(rkey)
+                      }
                       key={i}
                     />
                   ))}
@@ -1112,6 +1118,39 @@ export default function Home() {
               }}
             >
               Delete Feed &quot;{selectedRkeyClassifierDelete}&quot;
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        onOpenChange={() => setSelectedRkeyFeedUnpublish("")}
+        open={selectedRkeyFeedUnpublish !== ""}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Unpublish feed &quot;{selectedRkeyFeedUnpublish}&quot;?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently unpublish this feed from our servers. This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                await unpublishFeed(selectedRkeyFeedUnpublish);
+
+                toast({
+                  title: "Feed Unpublished Successfully",
+                  description:
+                    "This feed has successfully been unpublished from our servers.",
+                });
+              }}
+            >
+              Unpublish Feed &quot;{selectedRkeyFeedUnpublish}&quot;
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

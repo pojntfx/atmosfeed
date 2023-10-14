@@ -160,4 +160,18 @@ export class RestAPI {
       },
     });
   }
+
+  async unpublishFeed(rkey: string) {
+    const res = await this.agent.com.atproto.repo.deleteRecord({
+      collection: lexiconFeedGenerator,
+      repo: this.did,
+      rkey: rkey,
+    });
+
+    if (!res.success) {
+      throw new Error(
+        `could not unpublish feed from Bluesky: ${JSON.stringify(res)}`
+      );
+    }
+  }
 }
