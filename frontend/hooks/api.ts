@@ -188,6 +188,26 @@ export const useAPI = (
         setLoading(false);
       }
     },
+    deleteFeed: async (rkey: string) => {
+      if (!api) {
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        await api.deleteFeed(rkey);
+
+        const res = await api.getFeeds();
+
+        setUnpublishedFeeds(res.unpublished);
+        setPublishedFeeds(res.published);
+      } catch (e) {
+        handleError(e as Error, false);
+      } finally {
+        setLoading(false);
+      }
+    },
 
     deleteData: async () => {
       if (!api) {

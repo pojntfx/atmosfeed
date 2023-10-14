@@ -21,11 +21,15 @@ export const FeedCard: React.FC<{
   onFinalizeFeed: (rkey: string) => void;
   onEditClassifier?: (rkey: string) => void;
   onEditFeed?: (rkey: string) => void;
+  onDeleteClassifier?: (rkey: string) => void;
+  onDeleteFeed?: (rkey: string) => void;
 }> = ({
   feed,
   onFinalizeFeed,
   onEditClassifier,
   onEditFeed,
+  onDeleteClassifier,
+  onDeleteFeed,
   ...otherProps
 }) => (
   <Card className="flex items-center justify-between" {...otherProps}>
@@ -81,7 +85,13 @@ export const FeedCard: React.FC<{
               </DropdownMenuItem>
             )}
 
-            <DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                feed.title
+                  ? onDeleteFeed?.(feed.rkey)
+                  : onDeleteClassifier?.(feed.rkey)
+              }
+            >
               <Trash className="mr-2 h-4 w-4" /> Delete
             </DropdownMenuItem>
           </DropdownMenuGroup>

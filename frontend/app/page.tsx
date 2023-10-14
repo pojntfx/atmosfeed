@@ -196,6 +196,7 @@ export default function Home() {
     applyFeed,
     finalizeFeed,
     republishFeed,
+    deleteFeed,
 
     deleteData,
 
@@ -221,6 +222,8 @@ export default function Home() {
 
   const [selectedRkeyFinalization, setSelectedFinalizationRkey] = useState("");
   const [selectedRkeyClassifierEdit, setSelectedRkeyClassifierEdit] =
+    useState("");
+  const [selectedRkeyClassifierDelete, setSelectedRkeyClassifierDelete] =
     useState("");
 
   const [selectedRkeyFeedEdit, setSelectedRkeyFeedEdit] = useState("");
@@ -398,6 +401,9 @@ export default function Home() {
                         }
                         onEditClassifier={(rkey) =>
                           setSelectedRkeyClassifierEdit(rkey)
+                        }
+                        onDeleteClassifier={(rkey) =>
+                          setSelectedRkeyClassifierDelete(rkey)
                         }
                         key={i}
                       />
@@ -1073,6 +1079,39 @@ export default function Home() {
               }}
             >
               Delete Your Data
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        onOpenChange={() => setSelectedRkeyClassifierDelete("")}
+        open={selectedRkeyClassifierDelete !== ""}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete feed &quot;{selectedRkeyClassifierDelete}&quot;?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this feed from our servers. This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                await deleteFeed(selectedRkeyClassifierDelete);
+
+                toast({
+                  title: "Feed Deleted Successfully",
+                  description:
+                    "This feed has successfully been deleted from our servers.",
+                });
+              }}
+            >
+              Delete Feed &quot;{selectedRkeyClassifierDelete}&quot;
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

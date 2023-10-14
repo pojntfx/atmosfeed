@@ -144,4 +144,20 @@ export class RestAPI {
       );
     }
   }
+
+  async deleteFeed(rkey: string) {
+    const atmosfeedURL = new URL(this.apiURL + "admin/feeds");
+
+    atmosfeedURL.search = new URLSearchParams({
+      rkey,
+      service: this.service,
+    }).toString();
+
+    await fetch(atmosfeedURL.toString(), {
+      method: "DELETE",
+      headers: {
+        Authorization: "Bearer " + this.accessJWT,
+      },
+    });
+  }
 }
