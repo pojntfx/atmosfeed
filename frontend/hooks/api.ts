@@ -188,7 +188,7 @@ export const useAPI = (
         setLoading(false);
       }
     },
-    deleteFeed: async (rkey: string) => {
+    deleteClassifier: async (rkey: string) => {
       if (!api) {
         return;
       }
@@ -217,6 +217,27 @@ export const useAPI = (
 
       try {
         await api.unpublishFeed(rkey);
+
+        const res = await api.getFeeds();
+
+        setUnpublishedFeeds(res.unpublished);
+        setPublishedFeeds(res.published);
+      } catch (e) {
+        handleError(e as Error, false);
+      } finally {
+        setLoading(false);
+      }
+    },
+    deleteFeed: async (rkey: string) => {
+      if (!api) {
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        await api.unpublishFeed(rkey);
+        await api.deleteFeed(rkey);
 
         const res = await api.getFeeds();
 

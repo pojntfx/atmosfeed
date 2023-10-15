@@ -196,8 +196,9 @@ export default function Home() {
     applyFeed,
     finalizeFeed,
     republishFeed,
-    deleteFeed,
+    deleteClassifier,
     unpublishFeed,
+    deleteFeed,
 
     deleteData,
 
@@ -228,6 +229,7 @@ export default function Home() {
     useState("");
   const [selectedRkeyFeedUnpublish, setSelectedRkeyFeedUnpublish] =
     useState("");
+  const [selectedRkeyFeedDelete, setSelectedRkeyFeedDelete] = useState("");
 
   const [selectedRkeyFeedEdit, setSelectedRkeyFeedEdit] = useState("");
   useEffect(() => {
@@ -430,6 +432,7 @@ export default function Home() {
                       onUnpublishFeed={(rkey) =>
                         setSelectedRkeyFeedUnpublish(rkey)
                       }
+                      onDeleteFeed={(rkey) => setSelectedRkeyFeedDelete(rkey)}
                       key={i}
                     />
                   ))}
@@ -1108,7 +1111,7 @@ export default function Home() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
-                await deleteFeed(selectedRkeyClassifierDelete);
+                await deleteClassifier(selectedRkeyClassifierDelete);
 
                 toast({
                   title: "Feed Deleted Successfully",
@@ -1151,6 +1154,39 @@ export default function Home() {
               }}
             >
               Unpublish Feed &quot;{selectedRkeyFeedUnpublish}&quot;
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        onOpenChange={() => setSelectedRkeyFeedDelete("")}
+        open={selectedRkeyFeedDelete !== ""}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete feed &quot;{selectedRkeyFeedDelete}&quot;?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this feed from our servers. This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                await deleteFeed(selectedRkeyFeedDelete);
+
+                toast({
+                  title: "Feed Deleted Successfully",
+                  description:
+                    "This feed has successfully been deleted from our servers.",
+                });
+              }}
+            >
+              Delete Feed &quot;{selectedRkeyFeedDelete}&quot;
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
