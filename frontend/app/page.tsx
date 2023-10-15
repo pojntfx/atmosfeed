@@ -68,6 +68,7 @@ import {
   MoonStar,
   PlaneLanding,
   Plus,
+  Save,
   Send,
   Sun,
   Trash,
@@ -393,72 +394,79 @@ export default function Home() {
       <div className="content">
         <main className="flex-grow flex flex-col justify-center items-center gap-2 container">
           {signedIn ? (
-            <>
-              <div className="w-full max-w-2xl flex flex-col gap-2">
-                <div className="flex justify-between items-center gap-2 mb-2">
-                  <h2 className="text-xl font-medium">Unpublished Feeds</h2>
+            loading ? (
+              <>
+                <Loader className="h-8 w-8 mb-1 animate-spin" /> Loading feeds
+                ...
+              </>
+            ) : (
+              <>
+                <div className="w-full max-w-2xl flex flex-col gap-2">
+                  <div className="flex justify-between items-center gap-2 mb-2">
+                    <h2 className="text-xl font-medium">Unpublished Feeds</h2>
 
-                  {unpublishedFeeds.length > 0 && (
-                    <Button onClick={() => setCreateFeedDialogOpen(true)}>
-                      <Plus className="sm:mr-2 h-4 w-4" />{" "}
-                      <span className="hidden sm:inline">Create Feed</span>
+                    {unpublishedFeeds.length > 0 && (
+                      <Button onClick={() => setCreateFeedDialogOpen(true)}>
+                        <Plus className="sm:mr-2 h-4 w-4" />{" "}
+                        <span className="hidden sm:inline">Create Feed</span>
+                      </Button>
+                    )}
+                  </div>
+
+                  {unpublishedFeeds.length > 0 ? (
+                    unpublishedFeeds.map((feed, i) => (
+                      <FeedCard
+                        feed={feed}
+                        onFinalizeFeed={(rkey) =>
+                          setSelectedFinalizationRkey(rkey)
+                        }
+                        onEditClassifier={(rkey) =>
+                          setSelectedRkeyClassifierEdit(rkey)
+                        }
+                        onDeleteClassifier={(rkey) =>
+                          setSelectedRkeyClassifierDelete(rkey)
+                        }
+                        key={i}
+                      />
+                    ))
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      onClick={() => setCreateFeedDialogOpen(true)}
+                      className="outline-dotted outline-1 empty-state"
+                    >
+                      <div>
+                        <Plus className="h-8 w-8 mb-1 text-muted-foreground" />
+                      </div>
+                      <div>Create a new feed</div>
                     </Button>
                   )}
                 </div>
 
-                {unpublishedFeeds.length > 0 ? (
-                  unpublishedFeeds.map((feed, i) => (
-                    <FeedCard
-                      feed={feed}
-                      onFinalizeFeed={(rkey) =>
-                        setSelectedFinalizationRkey(rkey)
-                      }
-                      onEditClassifier={(rkey) =>
-                        setSelectedRkeyClassifierEdit(rkey)
-                      }
-                      onDeleteClassifier={(rkey) =>
-                        setSelectedRkeyClassifierDelete(rkey)
-                      }
-                      key={i}
-                    />
-                  ))
-                ) : (
-                  <Button
-                    variant="ghost"
-                    onClick={() => setCreateFeedDialogOpen(true)}
-                    className="outline-dotted outline-1 empty-state"
-                  >
-                    <div>
-                      <Plus className="h-8 w-8 mb-1 text-muted-foreground" />
+                {publishedFeeds.length > 0 && (
+                  <div className="w-full max-w-2xl flex flex-col gap-2">
+                    <div className="flex justify-between items-center gap-2 my-2">
+                      <h2 className="text-xl font-medium">Published Feeds</h2>
                     </div>
-                    <div>Create a new feed</div>
-                  </Button>
-                )}
-              </div>
 
-              {publishedFeeds.length > 0 && (
-                <div className="w-full max-w-2xl flex flex-col gap-2">
-                  <div className="flex justify-between items-center gap-2 my-2">
-                    <h2 className="text-xl font-medium">Published Feeds</h2>
+                    {publishedFeeds.map((feed, i) => (
+                      <FeedCard
+                        feed={feed}
+                        onFinalizeFeed={(rkey) =>
+                          setSelectedFinalizationRkey(rkey)
+                        }
+                        onEditFeed={(rkey) => setSelectedRkeyFeedEdit(rkey)}
+                        onUnpublishFeed={(rkey) =>
+                          setSelectedRkeyFeedUnpublish(rkey)
+                        }
+                        onDeleteFeed={(rkey) => setSelectedRkeyFeedDelete(rkey)}
+                        key={i}
+                      />
+                    ))}
                   </div>
-
-                  {publishedFeeds.map((feed, i) => (
-                    <FeedCard
-                      feed={feed}
-                      onFinalizeFeed={(rkey) =>
-                        setSelectedFinalizationRkey(rkey)
-                      }
-                      onEditFeed={(rkey) => setSelectedRkeyFeedEdit(rkey)}
-                      onUnpublishFeed={(rkey) =>
-                        setSelectedRkeyFeedUnpublish(rkey)
-                      }
-                      onDeleteFeed={(rkey) => setSelectedRkeyFeedDelete(rkey)}
-                      key={i}
-                    />
-                  ))}
-                </div>
-              )}
-            </>
+                )}
+              </>
+            )
           ) : (
             <>
               <Image
@@ -716,7 +724,7 @@ export default function Home() {
 
           <DialogFooter>
             <Button type="submit" form="setup">
-              Next
+              <LogIn className="mr-2 h-4 w-4" /> Next
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -965,9 +973,9 @@ export default function Home() {
               {loading ? (
                 <Loader className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <Edit className="mr-2 h-4 w-4" />
+                <Save className="mr-2 h-4 w-4" />
               )}{" "}
-              Edit Feed
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1094,9 +1102,9 @@ export default function Home() {
               {loading ? (
                 <Loader className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <Edit className="mr-2 h-4 w-4" />
+                <Save className="mr-2 h-4 w-4" />
               )}{" "}
-              Edit Feed
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
