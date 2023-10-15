@@ -95,7 +95,13 @@ const setupFormSchema = z.object({
 });
 
 const createFeedSchema = z.object({
-  rkey: z.string().min(1, "Resource key is required"),
+  rkey: z
+    .string()
+    .min(1, "Resource key is required")
+    .max(15, "Resource key must be shorter than 15 characters")
+    .refine((rkey) => /^[A-Za-z0-9-]+$/.test(rkey), {
+      message: "Resource key can only contain characters, numbers, and hyphens",
+    }),
 
   classifier: z.instanceof(File, {
     message: "Classifier is required",
@@ -392,29 +398,42 @@ export default function Home() {
                 <div className="flex justify-between items-center gap-2 mb-2">
                   <h2 className="text-xl font-medium">Unpublished Feeds</h2>
 
-                  <Button onClick={() => setCreateFeedDialogOpen(true)}>
-                    <Plus className="sm:mr-2 h-4 w-4" />{" "}
-                    <span className="hidden sm:inline">Create Feed</span>
-                  </Button>
+                  {unpublishedFeeds.length > 0 && (
+                    <Button onClick={() => setCreateFeedDialogOpen(true)}>
+                      <Plus className="sm:mr-2 h-4 w-4" />{" "}
+                      <span className="hidden sm:inline">Create Feed</span>
+                    </Button>
+                  )}
                 </div>
 
-                {unpublishedFeeds.length > 0
-                  ? unpublishedFeeds.map((feed, i) => (
-                      <FeedCard
-                        feed={feed}
-                        onFinalizeFeed={(rkey) =>
-                          setSelectedFinalizationRkey(rkey)
-                        }
-                        onEditClassifier={(rkey) =>
-                          setSelectedRkeyClassifierEdit(rkey)
-                        }
-                        onDeleteClassifier={(rkey) =>
-                          setSelectedRkeyClassifierDelete(rkey)
-                        }
-                        key={i}
-                      />
-                    ))
-                  : "No feeds yet"}
+                {unpublishedFeeds.length > 0 ? (
+                  unpublishedFeeds.map((feed, i) => (
+                    <FeedCard
+                      feed={feed}
+                      onFinalizeFeed={(rkey) =>
+                        setSelectedFinalizationRkey(rkey)
+                      }
+                      onEditClassifier={(rkey) =>
+                        setSelectedRkeyClassifierEdit(rkey)
+                      }
+                      onDeleteClassifier={(rkey) =>
+                        setSelectedRkeyClassifierDelete(rkey)
+                      }
+                      key={i}
+                    />
+                  ))
+                ) : (
+                  <Button
+                    variant="ghost"
+                    onClick={() => setCreateFeedDialogOpen(true)}
+                    className="outline-dotted outline-1 empty-state"
+                  >
+                    <div>
+                      <Plus className="h-8 w-8 mb-1 text-muted-foreground" />
+                    </div>
+                    <div>Create a new feed</div>
+                  </Button>
+                )}
               </div>
 
               {publishedFeeds.length > 0 && (

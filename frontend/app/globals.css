@@ -357,3 +357,8 @@ body {
 .title-description {
   margin-top: 0 !important;
 }
+
+.empty-state {
+  padding: 3rem;
+  flex-direction: column;
+}
