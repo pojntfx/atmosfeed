@@ -281,6 +281,59 @@ export const useAPI = (
         setLoading(false);
       }
     },
+    exportUserdata: async () => {
+      if (!api) {
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const structuredUserdata = await api.exportStructuredUserdata();
+
+        const data = {
+          did,
+          service,
+
+          structured: structuredUserdata,
+        };
+
+        const blob = new Blob([JSON.stringify(data, null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+
+        a.href = url;
+        a.download = "atmosfeed.json";
+        a.click();
+
+        URL.revokeObjectURL(url);
+
+        if (structuredUserdata.feeds) {
+          await Promise.all(
+            structuredUserdata.feeds.map(async (f) => {
+              const classifier = await api.exportClassifier(f.Rkey);
+
+              const url = URL.createObjectURL(classifier);
+              const a = document.createElement("a");
+
+              a.href = url;
+              a.download = f.Rkey + ".scale";
+              a.click();
+
+              URL.revokeObjectURL(url);
+            })
+          );
+        }
+      } catch (e) {
+        handleError(e as Error, false);
+
+        throw e;
+      } finally {
+        setLoading(false);
+      }
+    },
 
     loading,
     logout,

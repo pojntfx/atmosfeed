@@ -59,7 +59,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Database,
   DownloadCloud,
-  Edit,
   Laptop,
   Loader,
   LogIn,
@@ -210,6 +209,7 @@ export default function Home() {
     deleteFeed,
 
     deleteUserdata,
+    exportUserdata,
 
     loading,
     logout,
@@ -306,34 +306,22 @@ export default function Home() {
                   <DropdownMenuPortal>
                     <DropdownMenuSubContent>
                       <DropdownMenuItem
-                        onClick={() => {
-                          const data = {
-                            did,
-                            service,
-                          };
-
-                          const blob = new Blob(
-                            [JSON.stringify(data, null, 2)],
-                            { type: "application/json" }
-                          );
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement("a");
-
-                          a.href = url;
-                          a.download = "atmosfeed.json";
-                          a.click();
-
-                          URL.revokeObjectURL(url);
+                        onClick={async () => {
+                          try {
+                            await exportUserdata();
+                          } catch (e) {
+                            return;
+                          }
 
                           toast({
-                            title: "Data Downloaded Successfully",
+                            title: "User Data Exported Successfully",
                             description:
-                              "Your data has successfully been downloaded to your system.",
+                              "Your data has successfully been exported to your system.",
                           });
                         }}
                       >
                         <DownloadCloud className="mr-2 h-4 w-4" />
-                        <span>Download your Data</span>
+                        <span>Export your Data</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => setDeleteUserdataDialogOpen((v) => !v)}

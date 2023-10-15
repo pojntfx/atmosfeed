@@ -1,5 +1,5 @@
 import { AtUri, BskyAgent } from "@atproto/api";
-import { IFeed } from "./models";
+import { IFeed, IStructuredUserdata } from "./models";
 
 const lexiconFeedGenerator = "app.bsky.feed.generator";
 
@@ -188,5 +188,39 @@ export class RestAPI {
         Authorization: "Bearer " + this.accessJWT,
       },
     });
+  }
+
+  async exportStructuredUserdata(): Promise<IStructuredUserdata> {
+    const atmosfeedURL = new URL(this.apiURL + "userdata/structured");
+
+    atmosfeedURL.search = new URLSearchParams({
+      service: this.service,
+    }).toString();
+
+    return (await (
+      await fetch(atmosfeedURL.toString(), {
+        headers: {
+          Authorization: "Bearer " + this.accessJWT,
+        },
+      })
+    ).json()) as IStructuredUserdata;
+  }
+
+  async exportClassifier(rkey: string): Promise<Blob> {
+    const atmosfeedURL = new URL(this.apiURL + "userdata/blob");
+
+    atmosfeedURL.search = new URLSearchParams({
+      service: this.service,
+      resource: "classifier",
+      rkey,
+    }).toString();
+
+    return (
+      await fetch(atmosfeedURL.toString(), {
+        headers: {
+          Authorization: "Bearer " + this.accessJWT,
+        },
+      })
+    ).blob();
   }
 }

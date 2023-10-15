@@ -529,7 +529,7 @@ var managerCmd = &cobra.Command{
 					panic(fmt.Errorf("%w: %v", errCouldNotGetFeedPosts, err))
 				}
 
-				w.Header().Set("Content-Type", "application/object-stream")
+				w.Header().Set("Content-Type", "application/octet-stream")
 
 				if _, err := io.Copy(w, classifier); err != nil {
 					panic(fmt.Errorf("%w: %v", errCouldNotEncode, err))
