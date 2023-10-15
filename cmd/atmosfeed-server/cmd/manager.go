@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -59,8 +60,9 @@ var (
 	errMissingRkey          = errors.New("missing rkey")
 	errCouldNotUpsertFeed   = errors.New("could not upsert feed")
 	errCouldNotDeleteFeed   = errors.New("could not delete feed")
-
-	errMissingService = errors.New("missing service")
+	errMissingService       = errors.New("missing service")
+	errMissingResource      = errors.New("missing resource")
+	errInvalidResource      = errors.New("invalid resource")
 )
 
 type feedSkeleton struct {
@@ -442,6 +444,52 @@ var managerCmd = &cobra.Command{
 					Posts:     posts,
 					FeedPosts: feedPosts,
 				}); err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotEncode, err))
+				}
+
+			default:
+				w.WriteHeader(http.StatusMethodNotAllowed)
+			}
+		}))
+
+		mux.HandleFunc("/userdata/blob", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			session := authorize(w, r)
+			if session == nil {
+				return
+			}
+
+			defer func() {
+				if err := recover(); err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+
+					log.Printf("Client disconnected with error: %v", err)
+				}
+			}()
+
+			resource := r.URL.Query().Get("resource")
+			if strings.TrimSpace(resource) == "" {
+				panic(fmt.Errorf("%w: %v", errMissingResource, err))
+			}
+
+			if resource != "classifier" {
+				panic(fmt.Errorf("%w: %v", errInvalidResource, err))
+			}
+
+			rkey := r.URL.Query().Get("rkey")
+			if strings.TrimSpace(rkey) == "" {
+				panic(fmt.Errorf("%w: %v", errMissingRkey, err))
+			}
+
+			switch r.Method {
+			case http.MethodGet:
+				classifier, err := persister.GetFeedClassifier(r.Context(), session.Did, rkey)
+				if err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotGetFeedPosts, err))
+				}
+
+				w.Header().Set("Content-Type", "application/object-stream")
+
+				if _, err := io.Copy(w, classifier); err != nil {
 					panic(fmt.Errorf("%w: %v", errCouldNotEncode, err))
 				}
 
