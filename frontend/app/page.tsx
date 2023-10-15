@@ -67,9 +67,11 @@ import {
   LogOut,
   Moon,
   MoonStar,
+  PlaneLanding,
   Plus,
   Send,
   Sun,
+  Trash,
   TrashIcon,
   User,
 } from "lucide-react";
@@ -329,7 +331,7 @@ export default function Home() {
                       <DropdownMenuItem
                         onClick={() => setDeleteDialogOpen((v) => !v)}
                       >
-                        <TrashIcon className="mr-2 h-4 w-4" />
+                        <Trash className="mr-2 h-4 w-4" />
                         <span>Delete your Data</span>
                       </DropdownMenuItem>
                     </DropdownMenuSubContent>
@@ -1076,7 +1078,8 @@ export default function Home() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
+            <Button
+              variant="destructive"
               onClick={async () => {
                 await deleteData();
 
@@ -1085,10 +1088,18 @@ export default function Home() {
                   description:
                     "Your data has successfully been deleted from our servers and you have been logged out.",
                 });
+
+                setDeleteDialogOpen(false);
               }}
+              disabled={loading}
             >
+              {loading ? (
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <TrashIcon className="mr-2 h-4 w-4" />
+              )}{" "}
               Delete Your Data
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1109,7 +1120,8 @@ export default function Home() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
+            <Button
+              variant="destructive"
               onClick={async () => {
                 await deleteClassifier(selectedRkeyClassifierDelete);
 
@@ -1118,10 +1130,18 @@ export default function Home() {
                   description:
                     "This feed has successfully been deleted from our servers.",
                 });
+
+                setSelectedRkeyClassifierDelete("");
               }}
+              disabled={loading}
             >
+              {loading ? (
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <TrashIcon className="mr-2 h-4 w-4" />
+              )}{" "}
               Delete Feed &quot;{selectedRkeyClassifierDelete}&quot;
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1142,7 +1162,8 @@ export default function Home() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
+            <Button
+              variant="destructive"
               onClick={async () => {
                 await unpublishFeed(selectedRkeyFeedUnpublish);
 
@@ -1151,10 +1172,18 @@ export default function Home() {
                   description:
                     "This feed has successfully been unpublished from our servers.",
                 });
+
+                setSelectedRkeyFeedUnpublish("");
               }}
+              disabled={loading}
             >
+              {loading ? (
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <PlaneLanding className="mr-2 h-4 w-4" />
+              )}{" "}
               Unpublish Feed &quot;{selectedRkeyFeedUnpublish}&quot;
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1175,7 +1204,8 @@ export default function Home() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
+            <Button
+              variant="destructive"
               onClick={async () => {
                 await deleteFeed(selectedRkeyFeedDelete);
 
@@ -1184,10 +1214,18 @@ export default function Home() {
                   description:
                     "This feed has successfully been deleted from our servers.",
                 });
+
+                setSelectedRkeyFeedDelete("");
               }}
+              disabled={loading}
             >
+              {loading ? (
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <TrashIcon className="mr-2 h-4 w-4" />
+              )}{" "}
               Delete Feed &quot;{selectedRkeyFeedDelete}&quot;
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
