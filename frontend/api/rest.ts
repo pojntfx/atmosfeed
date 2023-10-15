@@ -174,4 +174,19 @@ export class RestAPI {
       );
     }
   }
+
+  async deleteUserdata() {
+    const atmosfeedURL = new URL(this.apiURL + "userdata");
+
+    atmosfeedURL.search = new URLSearchParams({
+      service: this.service,
+    }).toString();
+
+    await fetch(atmosfeedURL.toString(), {
+      method: "DELETE",
+      headers: {
+        Authorization: "Bearer " + this.accessJWT,
+      },
+    });
+  }
 }

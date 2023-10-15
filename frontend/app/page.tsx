@@ -135,7 +135,8 @@ const editFeedSchema = z.object({
 export default function Home() {
   const { setTheme } = useTheme();
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteUserdataDialogOpen, setDeleteUserdataDialogOpen] =
+    useState(false);
   const [privacyPolicyDialogOpen, setPrivacyPolicyDialogOpen] = useState(false);
 
   const [username, setUsername] = useLocalStorage("atmosfeed.username", "");
@@ -208,7 +209,7 @@ export default function Home() {
     unpublishFeed,
     deleteFeed,
 
-    deleteData,
+    deleteUserdata,
 
     loading,
     logout,
@@ -335,7 +336,7 @@ export default function Home() {
                         <span>Download your Data</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => setDeleteDialogOpen((v) => !v)}
+                        onClick={() => setDeleteUserdataDialogOpen((v) => !v)}
                       >
                         <Trash className="mr-2 h-4 w-4" />
                         <span>Delete your Data</span>
@@ -1111,8 +1112,8 @@ export default function Home() {
       </Dialog>
 
       <AlertDialog
-        onOpenChange={(v) => setDeleteDialogOpen(v)}
-        open={deleteDialogOpen}
+        onOpenChange={(v) => setDeleteUserdataDialogOpen(v)}
+        open={deleteUserdataDialogOpen}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -1128,18 +1129,18 @@ export default function Home() {
               variant="destructive"
               onClick={async () => {
                 try {
-                  await deleteData();
+                  await deleteUserdata();
                 } catch (e) {
                   return;
                 }
 
                 toast({
-                  title: "Data Deleted Successfully",
+                  title: "User Data Deleted Successfully",
                   description:
                     "Your data has successfully been deleted from our servers and you have been logged out.",
                 });
 
-                setDeleteDialogOpen(false);
+                setDeleteUserdataDialogOpen(false);
               }}
               disabled={loading}
             >

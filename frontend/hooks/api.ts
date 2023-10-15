@@ -262,7 +262,7 @@ export const useAPI = (
       }
     },
 
-    deleteData: async () => {
+    deleteUserdata: async () => {
       if (!api) {
         return;
       }
@@ -270,7 +270,7 @@ export const useAPI = (
       setLoading(true);
 
       try {
-        // TODO: Call API to delete all user data
+        await api.deleteUserdata();
 
         logout();
       } catch (e) {
