@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -8,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/pojntfx/atmosfeed/pkg/models"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -15,6 +18,12 @@ import (
 const (
 	outFlag = "out"
 )
+
+type structuredUserdata struct {
+	Feeds     []models.Feed     `json:"feeds"`
+	Posts     []models.Post     `json:"posts"`
+	FeedPosts []models.FeedPost `json:"feedPosts"`
+}
 
 var exportCmd = &cobra.Command{
 	Use:     "export",
@@ -30,11 +39,13 @@ var exportCmd = &cobra.Command{
 			return err
 		}
 
-		{
-			if err := os.MkdirAll(viper.GetString(outFlag), os.ModePerm); err != nil {
-				return err
-			}
+		classifiersDir := filepath.Join(viper.GetString(outFlag), "blobs", "classifiers")
+		if err := os.MkdirAll(classifiersDir, os.ModePerm); err != nil {
+			return err
+		}
 
+		var structuredData structuredUserdata
+		{
 			u, err := url.Parse(viper.GetString(atmosfeedURLFlag))
 			if err != nil {
 				return err
@@ -43,7 +54,6 @@ var exportCmd = &cobra.Command{
 			u = u.JoinPath("userdata", "structured")
 
 			q := u.Query()
-			q.Add("rkey", viper.GetString(feedRkeyFlag))
 			q.Add("service", viper.GetString(pdsURLFlag))
 			u.RawQuery = q.Encode()
 
@@ -64,14 +74,67 @@ var exportCmd = &cobra.Command{
 				return errors.New(resp.Status)
 			}
 
+			if err := json.NewDecoder(resp.Body).Decode(&structuredData); err != nil {
+				return err
+			}
+
 			structuredDataFile, err := os.OpenFile(filepath.Join(viper.GetString(outFlag), "structured.json"), os.O_RDWR|os.O_TRUNC|os.O_CREATE, os.ModePerm)
 			if err != nil {
 				return err
 			}
 			defer structuredDataFile.Close()
 
-			if _, err := io.Copy(structuredDataFile, resp.Body); err != nil {
+			b, err := json.Marshal(structuredData)
+			if err != nil {
 				return err
+			}
+
+			if _, err := io.Copy(structuredDataFile, bytes.NewBuffer(b)); err != nil {
+				return err
+			}
+		}
+
+		{
+			for _, feed := range structuredData.Feeds {
+				u, err := url.Parse(viper.GetString(atmosfeedURLFlag))
+				if err != nil {
+					return err
+				}
+
+				u = u.JoinPath("userdata", "blob")
+
+				q := u.Query()
+				q.Add("service", viper.GetString(pdsURLFlag))
+				q.Add("resource", "classifier")
+				q.Add("rkey", feed.Rkey)
+				u.RawQuery = q.Encode()
+
+				req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+				if err != nil {
+					return err
+				}
+
+				req.Header.Set("Authorization", "Bearer "+auth.AccessJwt)
+
+				resp, err := http.DefaultClient.Do(req)
+				if err != nil {
+					return err
+				}
+				defer resp.Body.Close()
+
+				if resp.StatusCode != http.StatusOK {
+					return errors.New(resp.Status)
+				}
+
+				classifierFile, err := os.OpenFile(filepath.Join(classifiersDir, feed.Rkey+".scale"), os.O_RDWR|os.O_TRUNC|os.O_CREATE, os.ModePerm)
+				if err != nil {
+					return err
+				}
+				defer classifierFile.Close()
+
+				if _, err := io.Copy(classifierFile, resp.Body); err != nil {
+					return err
+				}
 			}
 		}
 
