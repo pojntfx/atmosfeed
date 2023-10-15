@@ -22,3 +22,7 @@ where did = $1
     and rkey = $2;
 -- name: DeleteAllPosts :exec
 delete from posts;
+-- name: GetPostsForDid :many
+select *
+from posts
+where did = $1;

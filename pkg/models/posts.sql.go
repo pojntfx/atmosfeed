@@ -82,6 +82,43 @@ func (q *Queries) DeletePost(ctx context.Context, arg DeletePostParams) error {
 	return err
 }
 
+const getPostsForDid = `-- name: GetPostsForDid :many
+select did, rkey, created_at, text, reply, langs, likes
+from posts
+where did = $1
+`
+
+func (q *Queries) GetPostsForDid(ctx context.Context, did string) ([]Post, error) {
+	rows, err := q.db.QueryContext(ctx, getPostsForDid, did)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Post
+	for rows.Next() {
+		var i Post
+		if err := rows.Scan(
+			&i.Did,
+			&i.Rkey,
+			&i.CreatedAt,
+			&i.Text,
+			&i.Reply,
+			pq.Array(&i.Langs),
+			&i.Likes,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const likePost = `-- name: LikePost :one
 update posts
 set likes = likes + 1

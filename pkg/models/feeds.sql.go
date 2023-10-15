@@ -146,6 +146,41 @@ func (q *Queries) GetFeedPostsCursor(ctx context.Context, arg GetFeedPostsCursor
 	return items, nil
 }
 
+const getFeedPostsForDid = `-- name: GetFeedPostsForDid :many
+select feed_did, feed_rkey, post_did, post_rkey, weight
+from feed_posts
+where post_did = $1
+`
+
+func (q *Queries) GetFeedPostsForDid(ctx context.Context, postDid string) ([]FeedPost, error) {
+	rows, err := q.db.QueryContext(ctx, getFeedPostsForDid, postDid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FeedPost
+	for rows.Next() {
+		var i FeedPost
+		if err := rows.Scan(
+			&i.FeedDid,
+			&i.FeedRkey,
+			&i.PostDid,
+			&i.PostRkey,
+			&i.Weight,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getFeeds = `-- name: GetFeeds :many
 select did, rkey
 from feeds

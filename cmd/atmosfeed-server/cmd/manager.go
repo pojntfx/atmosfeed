@@ -46,17 +46,19 @@ const (
 )
 
 var (
-	errMissingFeedURI     = errors.New("missing feed URI")
-	errInvalidFeedURI     = errors.New("invalid feed URI")
-	errInvalidLimit       = errors.New("invalid limit")
-	errLimitTooHigh       = errors.New("limit too high")
-	errInvalidFeedCursor  = errors.New("invalid feed cursor")
-	errCouldNotEncode     = errors.New("could not encode")
-	errCouldNotGetSession = errors.New("could not get session")
-	errCouldNotGetFeeds   = errors.New("could not get feeds")
-	errMissingRkey        = errors.New("missing rkey")
-	errCouldNotUpsertFeed = errors.New("could not upsert feed")
-	errCouldNotDeleteFeed = errors.New("could not delete feed")
+	errMissingFeedURI       = errors.New("missing feed URI")
+	errInvalidFeedURI       = errors.New("invalid feed URI")
+	errInvalidLimit         = errors.New("invalid limit")
+	errLimitTooHigh         = errors.New("limit too high")
+	errInvalidFeedCursor    = errors.New("invalid feed cursor")
+	errCouldNotEncode       = errors.New("could not encode")
+	errCouldNotGetSession   = errors.New("could not get session")
+	errCouldNotGetFeeds     = errors.New("could not get feeds")
+	errCouldNotGetPosts     = errors.New("could not get posts")
+	errCouldNotGetFeedPosts = errors.New("could not get feed posts")
+	errMissingRkey          = errors.New("missing rkey")
+	errCouldNotUpsertFeed   = errors.New("could not upsert feed")
+	errCouldNotDeleteFeed   = errors.New("could not delete feed")
 
 	errMissingService = errors.New("missing service")
 )
@@ -80,6 +82,12 @@ type wellKnownService struct {
 	ID              string `json:"id"`
 	Type            string `json:"type"`
 	ServiceEndpoint string `json:"serviceEndpoint"`
+}
+
+type structuredUserdata struct {
+	Feeds     []models.Feed     `json:"feeds"`
+	Posts     []models.Post     `json:"posts"`
+	FeedPosts []models.FeedPost `json:"feedPosts"`
 }
 
 var managerCmd = &cobra.Command{
@@ -283,7 +291,7 @@ var managerCmd = &cobra.Command{
 			}
 		}))
 
-		mux.HandleFunc("/admin/feeds", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authorize := func(w http.ResponseWriter, r *http.Request) *atproto.ServerGetSession_Output {
 			if o := r.Header.Get("Origin"); o == viper.GetString(originFlag) {
 				w.Header().Set("Access-Control-Allow-Origin", o)
 				w.Header().Set("Access-Control-Allow-Methods", "GET, PUT, DELETE")
@@ -292,14 +300,14 @@ var managerCmd = &cobra.Command{
 			}
 
 			if r.Method == http.MethodOptions {
-				return
+				return nil
 			}
 
-			accessJwt := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-			if strings.TrimSpace(accessJwt) == "" {
+			accessJWT := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+			if strings.TrimSpace(accessJWT) == "" {
 				w.WriteHeader(http.StatusUnauthorized)
 
-				return
+				return nil
 			}
 
 			service := r.URL.Query().Get("service")
@@ -308,6 +316,32 @@ var managerCmd = &cobra.Command{
 
 				log.Println(errMissingService)
 
+				return nil
+			}
+
+			client := &xrpc.Client{
+				Client: http.DefaultClient,
+				Host:   service,
+				Auth: &xrpc.AuthInfo{
+					AccessJwt: accessJWT,
+				},
+			}
+
+			session, err := atproto.ServerGetSession(r.Context(), client)
+			if err != nil {
+				http.Error(w, errCouldNotGetSession.Error(), http.StatusUnprocessableEntity)
+
+				log.Println(errCouldNotGetSession)
+
+				return nil
+			}
+
+			return session
+		}
+
+		mux.HandleFunc("/admin/feeds", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			session := authorize(w, r)
+			if session == nil {
 				return
 			}
 
@@ -318,19 +352,6 @@ var managerCmd = &cobra.Command{
 					log.Printf("Client disconnected with error: %v", err)
 				}
 			}()
-
-			client := &xrpc.Client{
-				Client: http.DefaultClient,
-				Host:   service,
-				Auth: &xrpc.AuthInfo{
-					AccessJwt: accessJwt,
-				},
-			}
-
-			session, err := atproto.ServerGetSession(r.Context(), client)
-			if err != nil {
-				panic(fmt.Errorf("%w: %v", errCouldNotGetSession, err))
-			}
 
 			switch r.Method {
 			case http.MethodGet:
@@ -376,6 +397,52 @@ var managerCmd = &cobra.Command{
 
 				if err := persister.DeleteFeed(cmd.Context(), session.Did, rkey); err != nil {
 					panic(fmt.Errorf("%w: %v", errCouldNotDeleteFeed, err))
+				}
+
+			default:
+				w.WriteHeader(http.StatusMethodNotAllowed)
+			}
+		}))
+
+		mux.HandleFunc("/userdata/structured", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			session := authorize(w, r)
+			if session == nil {
+				return
+			}
+
+			defer func() {
+				if err := recover(); err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+
+					log.Printf("Client disconnected with error: %v", err)
+				}
+			}()
+
+			switch r.Method {
+			case http.MethodGet:
+				feeds, err := persister.GetFeedsForDid(r.Context(), session.Did)
+				if err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotGetFeeds, err))
+				}
+
+				posts, err := persister.GetPostsForDid(r.Context(), session.Did)
+				if err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotGetPosts, err))
+				}
+
+				feedPosts, err := persister.GetFeedPostsForDid(r.Context(), session.Did)
+				if err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotGetFeedPosts, err))
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+
+				if err := json.NewEncoder(w).Encode(structuredUserdata{
+					Feeds:     feeds,
+					Posts:     posts,
+					FeedPosts: feedPosts,
+				}); err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotEncode, err))
 				}
 
 			default:

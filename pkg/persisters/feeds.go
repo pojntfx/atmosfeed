@@ -54,6 +54,33 @@ func (p *ManagerPersister) GetFeedsForDid(
 	return p.queries.GetFeedsForDid(ctx, did)
 }
 
+func (p *ManagerPersister) GetPostsForDid(
+	ctx context.Context,
+	did string,
+) ([]models.Post, error) {
+	return p.queries.GetPostsForDid(ctx, did)
+}
+
+func (p *ManagerPersister) GetFeedPostsForDid(
+	ctx context.Context,
+	did string,
+) ([]models.FeedPost, error) {
+	return p.queries.GetFeedPostsForDid(ctx, did)
+}
+
+func (p *ManagerPersister) GetFeedClassifier(
+	ctx context.Context,
+	did string,
+	rkey string,
+) (io.Reader, error) {
+	return p.blobs.GetObject(
+		ctx,
+		p.bucket,
+		path.Join(did, rkey),
+		minio.GetObjectOptions{},
+	)
+}
+
 func (p *WorkerPersister) GetFeedClassifier(
 	ctx context.Context,
 	did string,

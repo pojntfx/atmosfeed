@@ -55,3 +55,7 @@ where fp.feed_did = $1
     )
 order by fp.weight desc
 limit $4;
+-- name: GetFeedPostsForDid :many
+select *
+from feed_posts
+where post_did = $1;
