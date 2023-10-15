@@ -41,7 +41,8 @@ const (
 
 	lexiconFeedPost = "app.bsky.feed.post"
 
-	originFlag = "origin"
+	originFlag         = "origin"
+	deleteAllPostsFlag = "delete-all-posts"
 )
 
 var (
@@ -122,6 +123,16 @@ var managerCmd = &cobra.Command{
 		}
 
 		log.Println("Connected to PostgreSQL and S3")
+
+		if viper.GetBool(deleteAllPostsFlag) {
+			if viper.GetBool(verboseFlag) {
+				log.Println("Deleting all posts")
+			}
+
+			if err := persister.DeleteAllPosts(cmd.Context()); err != nil {
+				return err
+			}
+		}
 
 		lis, err := net.Listen("tcp", viper.GetString(laddrFlag))
 		if err != nil {
@@ -525,6 +536,7 @@ func init() {
 	managerCmd.PersistentFlags().String(feedGeneratorDIDFlag, "did:web:atmosfeed-feeds.serveo.net", "DID of the feed generator (typically the hostname of the publicly reachable URL)")
 	managerCmd.PersistentFlags().String(feedGeneratorURLFlag, "https://atmosfeed-feeds.serveo.net", "Publicly reachable URL of the feed generator")
 	managerCmd.PersistentFlags().String(originFlag, "https://atmosfeed.p8.lu", "Allowed CORS origin")
+	managerCmd.PersistentFlags().Bool(deleteAllPostsFlag, true, "Whether to delete all posts from the index on startup (required for compliance with the EU right to be forgotten/GDPR article 17; deletions during uptime are handled using delete commits)")
 
 	viper.AutomaticEnv()
 

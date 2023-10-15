@@ -47,3 +47,9 @@ func (p *ManagerPersister) DeletePost(
 		Rkey: rkey,
 	})
 }
+
+func (p *ManagerPersister) DeleteAllPosts(
+	ctx context.Context,
+) error {
+	return p.queries.DeleteAllPosts(ctx)
+}

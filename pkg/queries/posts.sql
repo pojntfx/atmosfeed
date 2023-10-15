@@ -20,3 +20,5 @@ returning *;
 delete from posts
 where did = $1
     and rkey = $2;
+-- name: DeleteAllPosts :exec
+delete from posts;
