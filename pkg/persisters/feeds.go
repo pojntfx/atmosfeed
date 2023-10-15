@@ -54,20 +54,6 @@ func (p *ManagerPersister) GetFeedsForDid(
 	return p.queries.GetFeedsForDid(ctx, did)
 }
 
-func (p *ManagerPersister) GetPostsForDid(
-	ctx context.Context,
-	did string,
-) ([]models.Post, error) {
-	return p.queries.GetPostsForDid(ctx, did)
-}
-
-func (p *ManagerPersister) GetFeedPostsForDid(
-	ctx context.Context,
-	did string,
-) ([]models.FeedPost, error) {
-	return p.queries.GetFeedPostsForDid(ctx, did)
-}
-
 func (p *ManagerPersister) GetFeedClassifier(
 	ctx context.Context,
 	did string,
@@ -166,4 +152,18 @@ func (p *ManagerPersister) GetFeedPostsCursor(
 		Did:       postDid,
 		Rkey:      postRkey,
 	})
+}
+
+func (p *ManagerPersister) GetFeedPostsForDid(
+	ctx context.Context,
+	did string,
+) ([]models.FeedPost, error) {
+	return p.queries.GetFeedPostsForDid(ctx, did)
+}
+
+func (p *ManagerPersister) DeleteFeedPostsForDid(
+	ctx context.Context,
+	did string,
+) error {
+	return p.queries.DeleteFeedPostsForDid(ctx, did)
 }

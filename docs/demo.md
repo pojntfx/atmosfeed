@@ -50,5 +50,6 @@ go run ./cmd/atmosfeed-client/ delete --username pojntfxtesting.bsky.social --pa
 cd frontend
 bun dev # Now visit http://localhost:3000 to open the frontend and sign in
 
-go run ./cmd/atmosfeed-client/ export --username pojntfxtesting.bsky.social --password=${PASSWORD} --out out/atmosfeed-userdata
+go run ./cmd/atmosfeed-client/ export-userdata --username pojntfxtesting.bsky.social --password=${PASSWORD} --out out/atmosfeed-userdata
+go run ./cmd/atmosfeed-client/ delete-userdata --username pojntfxtesting.bsky.social --password=${PASSWORD}
 ```

@@ -47,22 +47,24 @@ const (
 )
 
 var (
-	errMissingFeedURI       = errors.New("missing feed URI")
-	errInvalidFeedURI       = errors.New("invalid feed URI")
-	errInvalidLimit         = errors.New("invalid limit")
-	errLimitTooHigh         = errors.New("limit too high")
-	errInvalidFeedCursor    = errors.New("invalid feed cursor")
-	errCouldNotEncode       = errors.New("could not encode")
-	errCouldNotGetSession   = errors.New("could not get session")
-	errCouldNotGetFeeds     = errors.New("could not get feeds")
-	errCouldNotGetPosts     = errors.New("could not get posts")
-	errCouldNotGetFeedPosts = errors.New("could not get feed posts")
-	errMissingRkey          = errors.New("missing rkey")
-	errCouldNotUpsertFeed   = errors.New("could not upsert feed")
-	errCouldNotDeleteFeed   = errors.New("could not delete feed")
-	errMissingService       = errors.New("missing service")
-	errMissingResource      = errors.New("missing resource")
-	errInvalidResource      = errors.New("invalid resource")
+	errMissingFeedURI          = errors.New("missing feed URI")
+	errInvalidFeedURI          = errors.New("invalid feed URI")
+	errInvalidLimit            = errors.New("invalid limit")
+	errLimitTooHigh            = errors.New("limit too high")
+	errInvalidFeedCursor       = errors.New("invalid feed cursor")
+	errCouldNotEncode          = errors.New("could not encode")
+	errCouldNotGetSession      = errors.New("could not get session")
+	errCouldNotGetFeeds        = errors.New("could not get feeds")
+	errCouldNotGetPosts        = errors.New("could not get posts")
+	errCouldNotGetFeedPosts    = errors.New("could not get feed posts")
+	errMissingRkey             = errors.New("missing rkey")
+	errCouldNotUpsertFeed      = errors.New("could not upsert feed")
+	errCouldNotDeleteFeed      = errors.New("could not delete feed")
+	errMissingService          = errors.New("missing service")
+	errMissingResource         = errors.New("missing resource")
+	errInvalidResource         = errors.New("invalid resource")
+	errCouldNotDeletePosts     = errors.New("could not delete posts")
+	errCouldNotDeleteFeedPosts = errors.New("could not delete feed posts")
 )
 
 type feedSkeleton struct {
@@ -399,6 +401,46 @@ var managerCmd = &cobra.Command{
 
 				if err := persister.DeleteFeed(cmd.Context(), session.Did, rkey); err != nil {
 					panic(fmt.Errorf("%w: %v", errCouldNotDeleteFeed, err))
+				}
+
+			default:
+				w.WriteHeader(http.StatusMethodNotAllowed)
+			}
+		}))
+
+		mux.HandleFunc("/userdata", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			session := authorize(w, r)
+			if session == nil {
+				return
+			}
+
+			defer func() {
+				if err := recover(); err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+
+					log.Printf("Client disconnected with error: %v", err)
+				}
+			}()
+
+			switch r.Method {
+			case http.MethodDelete:
+				feeds, err := persister.GetFeedsForDid(r.Context(), session.Did)
+				if err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotGetFeeds, err))
+				}
+
+				for _, feed := range feeds {
+					if err := persister.DeleteFeed(r.Context(), session.Did, feed.Rkey); err != nil {
+						panic(fmt.Errorf("%w: %v", errCouldNotDeleteFeed, err))
+					}
+				}
+
+				if err := persister.DeletePostsForDid(r.Context(), session.Did); err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotDeletePosts, err))
+				}
+
+				if err := persister.DeleteFeedPostsForDid(r.Context(), session.Did); err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotDeleteFeedPosts, err))
 				}
 
 			default:

@@ -26,3 +26,6 @@ delete from posts;
 select *
 from posts
 where did = $1;
+-- name: DeletePostsForDid :exec
+delete from posts
+where did = $1;

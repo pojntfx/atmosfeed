@@ -82,6 +82,16 @@ func (q *Queries) DeletePost(ctx context.Context, arg DeletePostParams) error {
 	return err
 }
 
+const deletePostsForDid = `-- name: DeletePostsForDid :exec
+delete from posts
+where did = $1
+`
+
+func (q *Queries) DeletePostsForDid(ctx context.Context, did string) error {
+	_, err := q.db.ExecContext(ctx, deletePostsForDid, did)
+	return err
+}
+
 const getPostsForDid = `-- name: GetPostsForDid :many
 select did, rkey, created_at, text, reply, langs, likes
 from posts

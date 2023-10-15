@@ -59,3 +59,6 @@ limit $4;
 select *
 from feed_posts
 where post_did = $1;
+-- name: DeleteFeedPostsForDid :exec
+delete from feed_posts
+where post_did = $1;

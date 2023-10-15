@@ -26,6 +26,16 @@ func (q *Queries) DeleteFeed(ctx context.Context, arg DeleteFeedParams) error {
 	return err
 }
 
+const deleteFeedPostsForDid = `-- name: DeleteFeedPostsForDid :exec
+delete from feed_posts
+where post_did = $1
+`
+
+func (q *Queries) DeleteFeedPostsForDid(ctx context.Context, postDid string) error {
+	_, err := q.db.ExecContext(ctx, deleteFeedPostsForDid, postDid)
+	return err
+}
+
 const getFeedPosts = `-- name: GetFeedPosts :many
 select p.did,
     p.rkey

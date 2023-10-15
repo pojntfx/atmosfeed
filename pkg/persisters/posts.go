@@ -53,3 +53,17 @@ func (p *ManagerPersister) DeleteAllPosts(
 ) error {
 	return p.queries.DeleteAllPosts(ctx)
 }
+
+func (p *ManagerPersister) GetPostsForDid(
+	ctx context.Context,
+	did string,
+) ([]models.Post, error) {
+	return p.queries.GetPostsForDid(ctx, did)
+}
+
+func (p *ManagerPersister) DeletePostsForDid(
+	ctx context.Context,
+	did string,
+) error {
+	return p.queries.DeletePostsForDid(ctx, did)
+}

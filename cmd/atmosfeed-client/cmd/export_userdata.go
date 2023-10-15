@@ -25,9 +25,9 @@ type structuredUserdata struct {
 	FeedPosts []models.FeedPost `json:"feedPosts"`
 }
 
-var exportCmd = &cobra.Command{
-	Use:     "export",
-	Aliases: []string{"e"},
+var exportUserdata = &cobra.Command{
+	Use:     "export-userdata",
+	Aliases: []string{"eu"},
 	Short:   "Export all user data from an Atmosfeed server",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := viper.BindPFlags(cmd.PersistentFlags()); err != nil {
@@ -143,9 +143,9 @@ var exportCmd = &cobra.Command{
 }
 
 func init() {
-	exportCmd.PersistentFlags().String(outFlag, "atmosfeed-userdata", "Directory to export user data to")
+	exportUserdata.PersistentFlags().String(outFlag, "atmosfeed-userdata", "Directory to export user data to")
 
 	viper.AutomaticEnv()
 
-	rootCmd.AddCommand(exportCmd)
+	rootCmd.AddCommand(exportUserdata)
 }
