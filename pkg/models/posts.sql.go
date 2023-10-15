@@ -57,6 +57,22 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 	return i, err
 }
 
+const deletePost = `-- name: DeletePost :exec
+delete from posts
+where did = $1
+    and rkey = $2
+`
+
+type DeletePostParams struct {
+	Did  string
+	Rkey string
+}
+
+func (q *Queries) DeletePost(ctx context.Context, arg DeletePostParams) error {
+	_, err := q.db.ExecContext(ctx, deletePost, arg.Did, arg.Rkey)
+	return err
+}
+
 const likePost = `-- name: LikePost :one
 update posts
 set likes = likes + 1

@@ -16,3 +16,7 @@ set likes = likes + 1
 where did = $1
     and rkey = $2
 returning *;
+-- name: DeletePost :exec
+delete from posts
+where did = $1
+    and rkey = $2;

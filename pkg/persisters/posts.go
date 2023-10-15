@@ -36,3 +36,14 @@ func (p *WorkerPersister) LikePost(
 		Rkey: rkey,
 	})
 }
+
+func (p *ManagerPersister) DeletePost(
+	ctx context.Context,
+	did string,
+	rkey string,
+) error {
+	return p.queries.DeletePost(ctx, models.DeletePostParams{
+		Did:  did,
+		Rkey: rkey,
+	})
+}

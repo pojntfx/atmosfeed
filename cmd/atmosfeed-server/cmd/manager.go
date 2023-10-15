@@ -461,6 +461,20 @@ var managerCmd = &cobra.Command{
 								log.Println("Published like", post)
 							}
 						}
+
+					case repomgr.EvtKindDeleteRecord:
+						if lexiconTypeID := path.Dir(op.Path); lexiconTypeID == lexiconFeedPost {
+							did, rkey := rp.SignedCommit().Did, path.Base(op.Path)
+							if err := persister.DeletePost(cmd.Context(), did, rkey); err != nil {
+								log.Println("Could not delete post, skipping:", err)
+
+								continue l
+							}
+
+							if viper.GetBool(verboseFlag) {
+								log.Println("Deleted post", did, rkey)
+							}
+						}
 					}
 				}
 
