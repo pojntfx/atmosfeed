@@ -134,6 +134,8 @@ export const useAPI = (
         setPublishedFeeds(res.published);
       } catch (e) {
         handleError(e as Error, false);
+
+        throw e;
       } finally {
         setLoading(false);
       }
@@ -159,6 +161,8 @@ export const useAPI = (
         setPublishedFeeds(res.published);
       } catch (e) {
         handleError(e as Error, false);
+
+        throw e;
       } finally {
         setLoading(false);
       }
@@ -184,6 +188,8 @@ export const useAPI = (
         setPublishedFeeds(res.published);
       } catch (e) {
         handleError(e as Error, false);
+
+        throw e;
       } finally {
         setLoading(false);
       }
@@ -204,6 +210,8 @@ export const useAPI = (
         setPublishedFeeds(res.published);
       } catch (e) {
         handleError(e as Error, false);
+
+        throw e;
       } finally {
         setLoading(false);
       }
@@ -224,6 +232,8 @@ export const useAPI = (
         setPublishedFeeds(res.published);
       } catch (e) {
         handleError(e as Error, false);
+
+        throw e;
       } finally {
         setLoading(false);
       }
@@ -245,6 +255,8 @@ export const useAPI = (
         setPublishedFeeds(res.published);
       } catch (e) {
         handleError(e as Error, false);
+
+        throw e;
       } finally {
         setLoading(false);
       }
@@ -263,6 +275,8 @@ export const useAPI = (
         logout();
       } catch (e) {
         handleError(e as Error, false);
+
+        throw e;
       } finally {
         setLoading(false);
       }

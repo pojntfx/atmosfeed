@@ -8,7 +8,6 @@ import {
 } from "@/components/ui/accordion";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -716,7 +715,11 @@ export default function Home() {
           <Form {...createFeedForm}>
             <form
               onSubmit={createFeedForm.handleSubmit(async (v) => {
-                await applyFeed(v.rkey, v.classifier);
+                try {
+                  await applyFeed(v.rkey, v.classifier);
+                } catch (e) {
+                  return;
+                }
 
                 setCreateFeedDialogOpen(false);
 
@@ -806,12 +809,16 @@ export default function Home() {
           <Form {...finalizeFeedForm}>
             <form
               onSubmit={finalizeFeedForm.handleSubmit(async (v) => {
-                await finalizeFeed(
-                  feedGeneratorDID,
-                  selectedRkeyFinalization,
-                  v.name,
-                  v.description
-                );
+                try {
+                  await finalizeFeed(
+                    feedGeneratorDID,
+                    selectedRkeyFinalization,
+                    v.name,
+                    v.description
+                  );
+                } catch (e) {
+                  return;
+                }
 
                 setSelectedFinalizationRkey("");
 
@@ -889,7 +896,11 @@ export default function Home() {
           <Form {...editClassifierForm}>
             <form
               onSubmit={editClassifierForm.handleSubmit(async (v) => {
-                await applyFeed(selectedRkeyClassifierEdit, v.classifier);
+                try {
+                  await applyFeed(selectedRkeyClassifierEdit, v.classifier);
+                } catch (e) {
+                  return;
+                }
 
                 setSelectedRkeyClassifierEdit("");
 
@@ -961,19 +972,27 @@ export default function Home() {
                   editFeedForm.formState.dirtyFields.classifier &&
                   v.classifier
                 ) {
-                  await applyFeed(selectedRkeyFeedEdit, v.classifier);
+                  try {
+                    await applyFeed(selectedRkeyFeedEdit, v.classifier);
+                  } catch (e) {
+                    return;
+                  }
                 }
 
                 if (
                   editFeedForm.formState.dirtyFields.name ||
                   editFeedForm.formState.dirtyFields.description
                 ) {
-                  await republishFeed(
-                    feedGeneratorDID,
-                    selectedRkeyFeedEdit,
-                    v.name,
-                    v.description
-                  );
+                  try {
+                    await republishFeed(
+                      feedGeneratorDID,
+                      selectedRkeyFeedEdit,
+                      v.name,
+                      v.description
+                    );
+                  } catch (e) {
+                    return;
+                  }
                 }
 
                 setSelectedRkeyFeedEdit("");
@@ -1081,7 +1100,11 @@ export default function Home() {
             <Button
               variant="destructive"
               onClick={async () => {
-                await deleteData();
+                try {
+                  await deleteData();
+                } catch (e) {
+                  return;
+                }
 
                 toast({
                   title: "Data Deleted Successfully",
@@ -1123,7 +1146,11 @@ export default function Home() {
             <Button
               variant="destructive"
               onClick={async () => {
-                await deleteClassifier(selectedRkeyClassifierDelete);
+                try {
+                  await deleteClassifier(selectedRkeyClassifierDelete);
+                } catch (e) {
+                  return;
+                }
 
                 toast({
                   title: "Feed Deleted Successfully",
@@ -1165,7 +1192,11 @@ export default function Home() {
             <Button
               variant="destructive"
               onClick={async () => {
-                await unpublishFeed(selectedRkeyFeedUnpublish);
+                try {
+                  await unpublishFeed(selectedRkeyFeedUnpublish);
+                } catch (e) {
+                  return;
+                }
 
                 toast({
                   title: "Feed Unpublished Successfully",
@@ -1207,7 +1238,11 @@ export default function Home() {
             <Button
               variant="destructive"
               onClick={async () => {
-                await deleteFeed(selectedRkeyFeedDelete);
+                try {
+                  await deleteFeed(selectedRkeyFeedDelete);
+                } catch (e) {
+                  return;
+                }
 
                 toast({
                   title: "Feed Deleted Successfully",
