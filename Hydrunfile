@@ -9,7 +9,7 @@ if [ "$1" = "test/cli" ]; then
     apt install -y curl make git
 
     # Install Scale
-    curl -fsSL https://dl.scale.sh | sh
+    curl -fsSL https://dl.scale.sh?analytics=false | sh
     source ~/.bashrc
 
     # Install TinyGo
@@ -64,7 +64,7 @@ if [ "$1" = "build/cli" ]; then
     install /tmp/bagop /usr/local/bin
 
     # Install Scale
-    curl -fsSL https://dl.scale.sh | sh
+    curl -fsSL https://dl.scale.sh?analytics=false | sh
     source ~/.bashrc
 
     # Install TinyGo

@@ -101,14 +101,14 @@ depend/pwa:
 
 depend/signature: $(addprefix depend/signature/,$(signatures))
 $(addprefix depend/signature/,$(signatures)):
-	scale signature generate $(subst depend/signature/,,$@):latest -d ./pkg/signatures/$(subst depend/signature/,,$@)
+	scale --no-telemetry signature generate $(subst depend/signature/,,$@):latest -d ./pkg/signatures/$(subst depend/signature/,,$@)
 	mkdir -p $(OUTPUT_DIR) pkg/signatures/$(subst depend/signature/,,$@)/go/guest pkg/signatures/$(subst depend/signature/,,$@)/go/host pkg/signatures/$(subst depend/signature/,,$@)/rust/guest
-	scale signature export local/$(subst depend/signature/,,$@):latest go guest pkg/signatures/$(subst depend/signature/,,$@)/go/guest
-	scale signature export local/$(subst depend/signature/,,$@):latest go host pkg/signatures/$(subst depend/signature/,,$@)/go/host
-	scale signature export local/$(subst depend/signature/,,$@):latest rust guest pkg/signatures/$(subst depend/signature/,,$@)/rust/guest
+	scale --no-telemetry signature export local/$(subst depend/signature/,,$@):latest go guest pkg/signatures/$(subst depend/signature/,,$@)/go/guest
+	scale --no-telemetry signature export local/$(subst depend/signature/,,$@):latest go host pkg/signatures/$(subst depend/signature/,,$@)/go/host
+	scale --no-telemetry signature export local/$(subst depend/signature/,,$@):latest rust guest pkg/signatures/$(subst depend/signature/,,$@)/rust/guest
 
 depend/classifier: $(addprefix depend/classifier/,$(classifiers))
 $(addprefix depend/classifier/,$(classifiers)):
 	mkdir -p $(OUTPUT_DIR)
-	scale function build --release -d ./classifiers/$(subst depend/classifier/,,$@)
-	scale function export local/$(subst depend/classifier/,,$@):latest $(OUTPUT_DIR)
+	scale --no-telemetry function build --release -d ./classifiers/$(subst depend/classifier/,,$@)
+	scale --no-telemetry function export local/$(subst depend/classifier/,,$@):latest $(OUTPUT_DIR)
