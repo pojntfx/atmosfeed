@@ -2,6 +2,8 @@
 create table feeds (
     did text not null,
     rkey text not null,
+    pinned_did text not null,
+    pinned_rkey text not null,
     primary key (did, rkey)
 );
 create table feed_posts (

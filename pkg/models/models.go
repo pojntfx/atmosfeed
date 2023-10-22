@@ -9,8 +9,10 @@ import (
 )
 
 type Feed struct {
-	Did  string
-	Rkey string
+	Did        string
+	Rkey       string
+	PinnedDid  string
+	PinnedRkey string
 }
 
 type FeedPost struct {

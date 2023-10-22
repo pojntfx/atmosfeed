@@ -14,6 +14,8 @@ func (p *ManagerPersister) UpsertFeed(
 	ctx context.Context,
 	did string,
 	rkey string,
+	pinnedDID string,
+	pinnedRkey string,
 	classifier io.Reader,
 ) error {
 	if _, err := p.blobs.PutObject(
@@ -28,8 +30,10 @@ func (p *ManagerPersister) UpsertFeed(
 	}
 
 	if err := p.queries.UpsertFeed(ctx, models.UpsertFeedParams{
-		Did:  did,
-		Rkey: rkey,
+		Did:        did,
+		Rkey:       rkey,
+		PinnedDid:  pinnedDID,
+		PinnedRkey: pinnedRkey,
 	}); err != nil {
 		return err
 	}

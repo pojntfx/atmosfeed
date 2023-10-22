@@ -13,6 +13,8 @@ import (
 const (
 	feedRkeyFlag       = "feed-rkey"
 	feedClassifierFlag = "feed-classifier"
+	feedPinnedDIDFlag  = "pinned-feed-did"
+	feedPinnedRkeyFlag = "pinned-feed-rkey"
 )
 
 var applyCmd = &cobra.Command{
@@ -45,6 +47,8 @@ var applyCmd = &cobra.Command{
 		q := u.Query()
 		q.Add("rkey", viper.GetString(feedRkeyFlag))
 		q.Add("service", viper.GetString(pdsURLFlag))
+		q.Add("pinnedDID", viper.GetString(feedPinnedDIDFlag))
+		q.Add("pinnedRkey", viper.GetString(feedPinnedRkeyFlag))
 		u.RawQuery = q.Encode()
 
 		req, err := http.NewRequest(http.MethodPut, u.String(), f)
@@ -72,6 +76,9 @@ func init() {
 	applyCmd.PersistentFlags().String(feedRkeyFlag, "trending", "Machine-readable key for the feed")
 
 	applyCmd.PersistentFlags().String(feedClassifierFlag, "out/local-trending-latest.scale", "Path to the feed classifier to upload")
+
+	applyCmd.PersistentFlags().String(feedPinnedDIDFlag, "", "DID of the pinned post for the feed (if left empty, no post will be pinned)")
+	applyCmd.PersistentFlags().String(feedPinnedRkeyFlag, "", "Machine-readable key of the pinned post for the feed (if left empty, no post will be pinned)")
 
 	viper.AutomaticEnv()
 

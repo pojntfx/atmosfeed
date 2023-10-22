@@ -192,7 +192,7 @@ func (q *Queries) GetFeedPostsForDid(ctx context.Context, postDid string) ([]Fee
 }
 
 const getFeeds = `-- name: GetFeeds :many
-select did, rkey
+select did, rkey, pinned_did, pinned_rkey
 from feeds
 `
 
@@ -205,7 +205,12 @@ func (q *Queries) GetFeeds(ctx context.Context) ([]Feed, error) {
 	var items []Feed
 	for rows.Next() {
 		var i Feed
-		if err := rows.Scan(&i.Did, &i.Rkey); err != nil {
+		if err := rows.Scan(
+			&i.Did,
+			&i.Rkey,
+			&i.PinnedDid,
+			&i.PinnedRkey,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -220,7 +225,7 @@ func (q *Queries) GetFeeds(ctx context.Context) ([]Feed, error) {
 }
 
 const getFeedsForDid = `-- name: GetFeedsForDid :many
-select did, rkey
+select did, rkey, pinned_did, pinned_rkey
 from feeds
 where did = $1
 `
@@ -234,7 +239,12 @@ func (q *Queries) GetFeedsForDid(ctx context.Context, did string) ([]Feed, error
 	var items []Feed
 	for rows.Next() {
 		var i Feed
-		if err := rows.Scan(&i.Did, &i.Rkey); err != nil {
+		if err := rows.Scan(
+			&i.Did,
+			&i.Rkey,
+			&i.PinnedDid,
+			&i.PinnedRkey,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -249,17 +259,27 @@ func (q *Queries) GetFeedsForDid(ctx context.Context, did string) ([]Feed, error
 }
 
 const upsertFeed = `-- name: UpsertFeed :exec
-insert into feeds (did, rkey)
-values ($1, $2) on conflict (did, rkey) do nothing
+insert into feeds (did, rkey, pinned_did, pinned_rkey)
+values ($1, $2, $3, $4) on conflict (did, rkey) do
+update
+set pinned_did = excluded.pinned_did,
+    pinned_rkey = excluded.pinned_rkey
 `
 
 type UpsertFeedParams struct {
-	Did  string
-	Rkey string
+	Did        string
+	Rkey       string
+	PinnedDid  string
+	PinnedRkey string
 }
 
 func (q *Queries) UpsertFeed(ctx context.Context, arg UpsertFeedParams) error {
-	_, err := q.db.ExecContext(ctx, upsertFeed, arg.Did, arg.Rkey)
+	_, err := q.db.ExecContext(ctx, upsertFeed,
+		arg.Did,
+		arg.Rkey,
+		arg.PinnedDid,
+		arg.PinnedRkey,
+	)
 	return err
 }
 
