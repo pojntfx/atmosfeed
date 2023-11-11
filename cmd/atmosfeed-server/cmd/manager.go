@@ -58,8 +58,6 @@ var (
 	errCouldNotGetPosts        = errors.New("could not get posts")
 	errCouldNotGetFeedPosts    = errors.New("could not get feed posts")
 	errMissingRkey             = errors.New("missing rkey")
-	errMissingPinnedDID        = errors.New("missing pinned DID")
-	errMissingPinnedRkey       = errors.New("missing pinned rkey")
 	errCouldNotUpsertFeed      = errors.New("could not upsert feed")
 	errCouldNotDeleteFeed      = errors.New("could not delete feed")
 	errMissingService          = errors.New("missing service")
@@ -388,22 +386,7 @@ var managerCmd = &cobra.Command{
 				}
 
 				pinnedDID := r.URL.Query().Get("pinnedDID")
-				if strings.TrimSpace(pinnedDID) == "" {
-					http.Error(w, errMissingPinnedDID.Error(), http.StatusUnprocessableEntity)
-
-					log.Println(errMissingPinnedDID)
-
-					return
-				}
-
 				pinnedRkey := r.URL.Query().Get("pinnedRkey")
-				if strings.TrimSpace(pinnedRkey) == "" {
-					http.Error(w, errMissingPinnedRkey.Error(), http.StatusUnprocessableEntity)
-
-					log.Println(errMissingPinnedRkey)
-
-					return
-				}
 
 				if err := persister.UpsertFeed(cmd.Context(), session.Did, rkey, pinnedDID, pinnedRkey, r.Body); err != nil {
 					panic(fmt.Errorf("%w: %v", errCouldNotUpsertFeed, err))
