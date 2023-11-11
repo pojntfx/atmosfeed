@@ -132,8 +132,8 @@ func (p *ManagerPersister) GetFeedPosts(
 	limit int32,
 ) ([]models.GetFeedPostsRow, error) {
 	return p.queries.GetFeedPosts(ctx, models.GetFeedPostsParams{
-		FeedDid:   feedDid,
-		FeedRkey:  feedRkey,
+		Did:       feedDid,
+		Rkey:      feedRkey,
 		CreatedAt: ttl,
 		Limit:     limit,
 	})

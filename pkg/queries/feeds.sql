@@ -27,16 +27,38 @@ values ($1, $2, $3, $4, $5) on conflict (feed_did, feed_rkey, post_did, post_rke
 update
 set weight = excluded.weight;
 -- name: GetFeedPosts :many
-select p.did,
-    p.rkey
-from posts p
-    join feed_posts fp on p.did = fp.post_did
-    and p.rkey = fp.post_rkey
-where fp.feed_did = $1
-    and fp.feed_rkey = $2
-    and p.created_at > $3
-order by fp.weight desc
-limit $4;
+with pinned_post as (
+    select pinned_did,
+        pinned_rkey
+    from feeds f
+    where f.did = $1
+        and f.rkey = $2
+),
+feed_posts as (
+    select p.did,
+        p.rkey
+    from posts p
+        join feed_posts fp on p.did = fp.post_did
+        and p.rkey = fp.post_rkey
+    where fp.feed_did = $1
+        and fp.feed_rkey = $2
+        and p.created_at > $3
+    order by fp.weight desc
+    limit $4
+)
+select did,
+    rkey
+from (
+        select pinned_did as did,
+            pinned_rkey as rkey
+        from pinned_post p
+        where p.pinned_did <> ''
+            and p.pinned_rkey <> ''
+        union all
+        select did,
+            rkey
+        from feed_posts
+    ) as results;
 -- name: GetFeedPostsCursor :many
 with referenceposttime as (
     select created_at
