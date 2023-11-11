@@ -106,6 +106,11 @@ const createFeedSchema = z.object({
   classifier: z.instanceof(File, {
     message: "Classifier is required",
   }),
+
+  pinnedPost: z
+    .string()
+    .url("Pinned post must be a valid Bluesky URL or empty")
+    .optional(),
 });
 
 const editClassifierSchema = z.object({
@@ -792,6 +797,37 @@ export default function Home() {
                   </FormItem>
                 )}
               />
+
+              <Accordion type="single" collapsible>
+                <AccordionItem value="item-1">
+                  <AccordionTrigger>Advanced</AccordionTrigger>
+                  <AccordionContent>
+                    <FormField
+                      control={createFeedForm.control}
+                      name="pinnedPost"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Pinned Post</FormLabel>
+
+                          <FormDescription>
+                            Specify a post that should appear at the very top of
+                            your feed by providing its Bluesky URL.
+                          </FormDescription>
+
+                          <FormControl>
+                            <Input
+                              type="url"
+                              placeholder="https://bsky.app/profile/felicitas.pojtinger.com/post/3kd7u2rxara2y"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </form>
           </Form>
 
