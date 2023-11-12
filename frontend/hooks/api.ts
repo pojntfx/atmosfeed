@@ -118,7 +118,12 @@ export const useAPI = (
     unpublishedFeeds,
     publishedFeeds,
 
-    applyFeed: async (rkey: string, classifier: File) => {
+    applyFeed: async (
+      rkey: string,
+      classifier: File,
+      pinnedDID: string,
+      pinnedRkey: string
+    ) => {
       if (!api) {
         return;
       }
@@ -126,7 +131,7 @@ export const useAPI = (
       setLoading(true);
 
       try {
-        await api.applyFeed(rkey, classifier);
+        await api.applyFeed(rkey, classifier, pinnedDID, pinnedRkey);
 
         const res = await api.getFeeds();
 

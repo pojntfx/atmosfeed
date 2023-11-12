@@ -61,12 +61,19 @@ export class RestAPI {
     );
   }
 
-  async applyFeed(rkey: string, classifier: File) {
+  async applyFeed(
+    rkey: string,
+    classifier: File,
+    pinnedDID: string,
+    pinnedRkey: string
+  ) {
     const atmosfeedURL = new URL(this.apiURL + "admin/feeds");
 
     atmosfeedURL.search = new URLSearchParams({
       rkey,
       service: this.service,
+      pinnedDID,
+      pinnedRkey,
     }).toString();
 
     await fetch(atmosfeedURL.toString(), {
