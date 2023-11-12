@@ -110,7 +110,31 @@ const createFeedSchema = z.object({
   pinnedPost: z
     .string()
     .url("Pinned post must be a valid Bluesky URL or empty")
-    .optional(),
+    .optional()
+    .refine(
+      (url) => {
+        if (!url) return true;
+
+        const paths = new URL(url).pathname.split("/");
+
+        return paths.length >= 3 && paths[2];
+      },
+      {
+        message: "Pinned post must have a valid DID in the URL path",
+      }
+    )
+    .refine(
+      (url) => {
+        if (!url) return true;
+
+        const paths = new URL(url).pathname.split("/");
+
+        return paths.length >= 5 && paths[4];
+      },
+      {
+        message: "Pinned post must have a valid Rkey in the URL path",
+      }
+    ),
 });
 
 const editClassifierSchema = z.object({
@@ -200,7 +224,6 @@ export default function Home() {
 
   const {
     avatar,
-    did,
     signedIn,
 
     unpublishedFeeds,
@@ -737,7 +760,18 @@ export default function Home() {
             <form
               onSubmit={createFeedForm.handleSubmit(async (v) => {
                 try {
-                  await applyFeed(v.rkey, v.classifier);
+                  let pinnedDID = "";
+                  let pinnedRkey = "";
+
+                  if (v.pinnedPost) {
+                    const paths = new URL(v.pinnedPost).pathname.split("/");
+
+                    // We validate URLs and lengths using Zod already, so we can safely access them here
+                    pinnedDID = paths[2];
+                    pinnedRkey = paths[4];
+                  }
+
+                  await applyFeed(v.rkey, v.classifier, pinnedDID, pinnedRkey);
                 } catch (e) {
                   return;
                 }
@@ -817,7 +851,7 @@ export default function Home() {
                           <FormControl>
                             <Input
                               type="url"
-                              placeholder="https://bsky.app/profile/felicitas.pojtinger.com/post/3kd7u2rxara2y"
+                              placeholder="https://bsky.app/profile/did:plc:cz73r7iyiqn26upot4jtjdhk/post/3kdaerqzvub2x"
                               {...field}
                             />
                           </FormControl>
@@ -949,7 +983,13 @@ export default function Home() {
             <form
               onSubmit={editClassifierForm.handleSubmit(async (v) => {
                 try {
-                  await applyFeed(selectedRkeyClassifierEdit, v.classifier);
+                  // TODO: Add pinned post URL
+                  await applyFeed(
+                    selectedRkeyClassifierEdit,
+                    v.classifier,
+                    "",
+                    ""
+                  );
                 } catch (e) {
                   return;
                 }
@@ -1025,7 +1065,8 @@ export default function Home() {
                   v.classifier
                 ) {
                   try {
-                    await applyFeed(selectedRkeyFeedEdit, v.classifier);
+                    // TODO: Add pinned post URL
+                    await applyFeed(selectedRkeyFeedEdit, v.classifier, "", "");
                   } catch (e) {
                     return;
                   }
