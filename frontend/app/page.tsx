@@ -94,6 +94,50 @@ const setupFormSchema = z.object({
   acceptedPrivacyPolicy: z.literal<boolean>(true),
 });
 
+const pinnedPostSchema = z
+  .string()
+  .url("Pinned post must be a valid Bluesky URL or empty")
+  .optional()
+  .refine(
+    (url) => {
+      if (!url) return true;
+
+      const paths = new URL(url).pathname.split("/");
+
+      return paths.length >= 3 && paths[2];
+    },
+    {
+      message: "Pinned post must have a valid DID in the URL path",
+    }
+  )
+  .refine(
+    (url) => {
+      if (!url) return true;
+
+      const paths = new URL(url).pathname.split("/");
+
+      return paths.length >= 5 && paths[4];
+    },
+    {
+      message: "Pinned post must have a valid Rkey in the URL path",
+    }
+  );
+
+const getDidAndRKeyFromURL = (url?: string) => {
+  let did = "";
+  let rkey = "";
+
+  if (url) {
+    const paths = new URL(url).pathname.split("/");
+
+    // We validate URLs and lengths using Zod already, so we can safely access them here
+    did = paths[2];
+    rkey = paths[4];
+  }
+
+  return { did, rkey };
+};
+
 const createFeedSchema = z.object({
   rkey: z
     .string()
@@ -102,45 +146,17 @@ const createFeedSchema = z.object({
     .refine((rkey) => /^[A-Za-z0-9-]+$/.test(rkey), {
       message: "Resource key can only contain characters, numbers, and hyphens",
     }),
-
   classifier: z.instanceof(File, {
     message: "Classifier is required",
   }),
-
-  pinnedPost: z
-    .string()
-    .url("Pinned post must be a valid Bluesky URL or empty")
-    .optional()
-    .refine(
-      (url) => {
-        if (!url) return true;
-
-        const paths = new URL(url).pathname.split("/");
-
-        return paths.length >= 3 && paths[2];
-      },
-      {
-        message: "Pinned post must have a valid DID in the URL path",
-      }
-    )
-    .refine(
-      (url) => {
-        if (!url) return true;
-
-        const paths = new URL(url).pathname.split("/");
-
-        return paths.length >= 5 && paths[4];
-      },
-      {
-        message: "Pinned post must have a valid Rkey in the URL path",
-      }
-    ),
+  pinnedPost: pinnedPostSchema,
 });
 
 const editClassifierSchema = z.object({
   classifier: z.instanceof(File, {
     message: "Classifier is required",
   }),
+  pinnedPost: pinnedPostSchema,
 });
 
 const finalizeFeedSchema = z.object({
@@ -158,6 +174,7 @@ const editFeedSchema = z.object({
     .max(24, "Name must be shorter than 24 characters"),
   description: z.string().min(1, "Description is required"),
   classifier: z.instanceof(File).optional(),
+  pinnedPost: pinnedPostSchema,
 });
 
 export default function Home() {
@@ -760,18 +777,9 @@ export default function Home() {
             <form
               onSubmit={createFeedForm.handleSubmit(async (v) => {
                 try {
-                  let pinnedDID = "";
-                  let pinnedRkey = "";
+                  const { did, rkey } = getDidAndRKeyFromURL(v.pinnedPost);
 
-                  if (v.pinnedPost) {
-                    const paths = new URL(v.pinnedPost).pathname.split("/");
-
-                    // We validate URLs and lengths using Zod already, so we can safely access them here
-                    pinnedDID = paths[2];
-                    pinnedRkey = paths[4];
-                  }
-
-                  await applyFeed(v.rkey, v.classifier, pinnedDID, pinnedRkey);
+                  await applyFeed(v.rkey, v.classifier, did, rkey);
                 } catch (e) {
                   return;
                 }
@@ -983,12 +991,13 @@ export default function Home() {
             <form
               onSubmit={editClassifierForm.handleSubmit(async (v) => {
                 try {
-                  // TODO: Add pinned post URL
+                  const { did, rkey } = getDidAndRKeyFromURL(v.pinnedPost);
+
                   await applyFeed(
                     selectedRkeyClassifierEdit,
                     v.classifier,
-                    "",
-                    ""
+                    did,
+                    rkey
                   );
                 } catch (e) {
                   return;
@@ -1030,6 +1039,37 @@ export default function Home() {
                   </FormItem>
                 )}
               />
+
+              <Accordion type="single" collapsible>
+                <AccordionItem value="item-1">
+                  <AccordionTrigger>Advanced</AccordionTrigger>
+                  <AccordionContent>
+                    <FormField
+                      control={editClassifierForm.control}
+                      name="pinnedPost"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Pinned Post</FormLabel>
+
+                          <FormDescription>
+                            Specify a post that should appear at the very top of
+                            your feed by providing its Bluesky URL.
+                          </FormDescription>
+
+                          <FormControl>
+                            <Input
+                              type="url"
+                              placeholder="https://bsky.app/profile/did:plc:cz73r7iyiqn26upot4jtjdhk/post/3kdaerqzvub2x"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </form>
           </Form>
 
@@ -1065,8 +1105,14 @@ export default function Home() {
                   v.classifier
                 ) {
                   try {
-                    // TODO: Add pinned post URL
-                    await applyFeed(selectedRkeyFeedEdit, v.classifier, "", "");
+                    const { did, rkey } = getDidAndRKeyFromURL(v.pinnedPost);
+
+                    await applyFeed(
+                      selectedRkeyFeedEdit,
+                      v.classifier,
+                      did,
+                      rkey
+                    );
                   } catch (e) {
                     return;
                   }
@@ -1160,6 +1206,37 @@ export default function Home() {
                   </FormItem>
                 )}
               />
+
+              <Accordion type="single" collapsible>
+                <AccordionItem value="item-1">
+                  <AccordionTrigger>Advanced</AccordionTrigger>
+                  <AccordionContent>
+                    <FormField
+                      control={editFeedForm.control}
+                      name="pinnedPost"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Pinned Post</FormLabel>
+
+                          <FormDescription>
+                            Specify a post that should appear at the very top of
+                            your feed by providing its Bluesky URL.
+                          </FormDescription>
+
+                          <FormControl>
+                            <Input
+                              type="url"
+                              placeholder="https://bsky.app/profile/did:plc:cz73r7iyiqn26upot4jtjdhk/post/3kdaerqzvub2x"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </form>
           </Form>
 

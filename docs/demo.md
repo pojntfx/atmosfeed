@@ -44,8 +44,11 @@ go run ./cmd/atmosfeed-client/ publish --username pojntfxtesting.bsky.social --p
 
 # Cleanup for everything but trending
 go run ./cmd/atmosfeed-client/ delete --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey questions
+go run ./cmd/atmosfeed-client/ unpublish --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey questions
 go run ./cmd/atmosfeed-client/ delete --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey german
+go run ./cmd/atmosfeed-client/ unpublish --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey german
 go run ./cmd/atmosfeed-client/ delete --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey everything
+go run ./cmd/atmosfeed-client/ unpublish --username pojntfxtesting.bsky.social --password=${PASSWORD} --feed-rkey everything
 
 cd frontend
 bun dev # Now visit http://localhost:3000 to open the frontend and sign in
