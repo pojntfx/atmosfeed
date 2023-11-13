@@ -286,98 +286,98 @@ var workerCmd = &cobra.Command{
 					for _, message := range stream.Messages {
 						rawDid, ok := message.Values["did"]
 						if !ok {
-							errs <- errMessageMissingDID
+							log.Println(errMessageMissingDID)
 
-							return
+							continue
 						}
 
 						did, ok := rawDid.(string)
 						if !ok {
-							errs <- errMessageInvalidDID
+							log.Println(errMessageInvalidDID)
 
-							return
+							continue
 						}
 
 						rawRkey, ok := message.Values["rkey"]
 						if !ok {
-							errs <- errMessageMissingRkey
+							log.Println(errMessageMissingRkey)
 
-							return
+							continue
 						}
 
 						rkey, ok := rawRkey.(string)
 						if !ok {
-							errs <- errMessageInvalidRkey
+							log.Println(errMessageInvalidRkey)
 
-							return
+							continue
 						}
 
 						rawCreatedAt, ok := message.Values["createdAt"]
 						if !ok {
-							errs <- errMessageMissingCreatedAt
+							log.Println(errMessageMissingCreatedAt)
 
-							return
+							continue
 						}
 
 						createdAtRFC, ok := rawCreatedAt.(string)
 						if !ok {
-							errs <- errMessageInvalidCreatedAt
+							log.Println(errMessageInvalidCreatedAt)
 
-							return
+							continue
 						}
 
 						createdAt, err := time.Parse(time.RFC3339Nano, createdAtRFC)
 						if err != nil {
 							createdAt, err = time.Parse("2006-01-02T15:04:05.999999", createdAtRFC) // For some reason, Bsky sometimes seems to not specify the timezone
 							if err != nil {
-								errs <- errMessageInvalidCreatedAt
+								log.Println(errMessageInvalidCreatedAt)
 
-								return
+								continue
 							}
 						}
 
 						rawText, ok := message.Values["text"]
 						if !ok {
-							errs <- errMessageMissingText
+							log.Println(errMessageMissingText)
 
-							return
+							continue
 						}
 
 						text, ok := rawText.(string)
 						if !ok {
-							errs <- errMessageInvalidText
+							log.Println(errMessageInvalidText)
 
-							return
+							continue
 						}
 
 						rawReply, ok := message.Values["reply"]
 						if !ok {
-							errs <- errMessageMissingReply
+							log.Println(errMessageMissingReply)
 
-							return
+							continue
 						}
 
 						replyValue, ok := rawReply.(string)
 						if !ok {
-							errs <- errMessageInvalidReply
+							log.Println(errMessageInvalidReply)
 
-							return
+							continue
 						}
 
 						reply := replyValue == "true"
 
 						rawLangs, ok := message.Values["langs"]
 						if !ok {
-							errs <- errMessageMissingLangs
+							log.Println(errMessageMissingLangs)
 
-							return
+							continue
 						}
 
 						langsJoined, ok := rawLangs.(string)
 						if !ok {
-							errs <- errMessageInvalidLangs
+							log.Println(errMessageInvalidLangs)
 
-							return
+							continue
 						}
 
 						langs := strings.Split(langsJoined, ",")
@@ -430,30 +430,30 @@ var workerCmd = &cobra.Command{
 					for _, message := range stream.Messages {
 						rawDid, ok := message.Values["did"]
 						if !ok {
-							errs <- errMessageMissingDID
+							log.Println(errMessageMissingDID)
 
-							return
+							continue
 						}
 
 						did, ok := rawDid.(string)
 						if !ok {
-							errs <- errMessageInvalidDID
+							log.Println(errMessageInvalidDID)
 
-							return
+							continue
 						}
 
 						rawRkey, ok := message.Values["rkey"]
 						if !ok {
-							errs <- errMessageMissingRkey
+							log.Println(errMessageMissingRkey)
 
-							return
+							continue
 						}
 
 						rkey, ok := rawRkey.(string)
 						if !ok {
-							errs <- errMessageInvalidRkey
+							log.Println(errMessageInvalidRkey)
 
-							return
+							continue
 						}
 
 						post, err := persister.LikePost(
