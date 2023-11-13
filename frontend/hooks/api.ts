@@ -145,6 +145,28 @@ export const useAPI = (
         setLoading(false);
       }
     },
+    patchFeed: async (rkey: string, pinnedDID: string, pinnedRkey: string) => {
+      if (!api) {
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        await api.patchFeed(rkey, pinnedDID, pinnedRkey);
+
+        const res = await api.getFeeds();
+
+        setUnpublishedFeeds(res.unpublished);
+        setPublishedFeeds(res.published);
+      } catch (e) {
+        handleError(e as Error, false);
+
+        throw e;
+      } finally {
+        setLoading(false);
+      }
+    },
     finalizeFeed: async (
       feedGeneratorDID: string,
       rkey: string,

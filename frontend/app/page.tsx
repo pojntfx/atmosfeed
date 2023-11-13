@@ -247,6 +247,7 @@ export default function Home() {
     publishedFeeds,
 
     applyFeed,
+    patchFeed,
     finalizeFeed,
     republishFeed,
     deleteClassifier,
@@ -1113,6 +1114,17 @@ export default function Home() {
                       did,
                       rkey
                     );
+                  } catch (e) {
+                    return;
+                  }
+                } else if (
+                  editFeedForm.formState.dirtyFields.pinnedPost &&
+                  v.pinnedPost
+                ) {
+                  try {
+                    const { did, rkey } = getDidAndRKeyFromURL(v.pinnedPost);
+
+                    await patchFeed(selectedRkeyFeedEdit, did, rkey);
                   } catch (e) {
                     return;
                   }

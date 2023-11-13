@@ -61,6 +61,29 @@ export class RestAPI {
     );
   }
 
+  async resolveHandle(handle: string) {
+    console.log(handle);
+
+    let did = handle;
+    if (!did.startsWith("did:")) {
+      const res = await this.agent.resolveHandle({
+        handle: did,
+      });
+
+      if (!res.success) {
+        throw new Error(
+          `could not resolve DID for handle from Bluesky: ${JSON.stringify(
+            res
+          )}`
+        );
+      }
+
+      did = res.data.did;
+    }
+
+    return did;
+  }
+
   async applyFeed(
     rkey: string,
     classifier: File,
@@ -72,13 +95,32 @@ export class RestAPI {
     atmosfeedURL.search = new URLSearchParams({
       rkey,
       service: this.service,
-      pinnedDID,
+      pinnedDID: await this.resolveHandle(pinnedDID),
       pinnedRkey,
     }).toString();
 
     await fetch(atmosfeedURL.toString(), {
       method: "PUT",
       body: classifier,
+      headers: {
+        Authorization: "Bearer " + this.accessJWT,
+        "Content-Type": "application/octet-stream",
+      },
+    });
+  }
+
+  async patchFeed(rkey: string, pinnedDID: string, pinnedRkey: string) {
+    const atmosfeedURL = new URL(this.apiURL + "admin/feeds");
+
+    atmosfeedURL.search = new URLSearchParams({
+      rkey,
+      service: this.service,
+      pinnedDID: await this.resolveHandle(pinnedDID),
+      pinnedRkey,
+    }).toString();
+
+    await fetch(atmosfeedURL.toString(), {
+      method: "PATCH",
       headers: {
         Authorization: "Bearer " + this.accessJWT,
         "Content-Type": "application/octet-stream",

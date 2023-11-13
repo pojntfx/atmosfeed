@@ -18,15 +18,17 @@ func (p *ManagerPersister) UpsertFeed(
 	pinnedRkey string,
 	classifier io.Reader,
 ) error {
-	if _, err := p.blobs.PutObject(
-		ctx,
-		p.bucket,
-		path.Join(did, rkey),
-		classifier,
-		-1,
-		minio.PutObjectOptions{},
-	); err != nil {
-		return err
+	if classifier != nil {
+		if _, err := p.blobs.PutObject(
+			ctx,
+			p.bucket,
+			path.Join(did, rkey),
+			classifier,
+			-1,
+			minio.PutObjectOptions{},
+		); err != nil {
+			return err
+		}
 	}
 
 	if err := p.queries.UpsertFeed(ctx, models.UpsertFeedParams{

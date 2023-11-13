@@ -298,7 +298,7 @@ var managerCmd = &cobra.Command{
 		authorize := func(w http.ResponseWriter, r *http.Request) *atproto.ServerGetSession_Output {
 			if o := r.Header.Get("Origin"); o == viper.GetString(originFlag) {
 				w.Header().Set("Access-Control-Allow-Origin", o)
-				w.Header().Set("Access-Control-Allow-Methods", "GET, PUT, DELETE")
+				w.Header().Set("Access-Control-Allow-Methods", "GET, PUT, PATCH, DELETE")
 				w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 			}
@@ -389,6 +389,24 @@ var managerCmd = &cobra.Command{
 				pinnedRkey := r.URL.Query().Get("pinnedRkey")
 
 				if err := persister.UpsertFeed(cmd.Context(), session.Did, rkey, pinnedDID, pinnedRkey, r.Body); err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotUpsertFeed, err))
+				}
+
+			// Same as PUT, except we don't replace the classifier
+			case http.MethodPatch:
+				rkey := r.URL.Query().Get("rkey")
+				if strings.TrimSpace(rkey) == "" {
+					http.Error(w, errMissingRkey.Error(), http.StatusUnprocessableEntity)
+
+					log.Println(errMissingRkey)
+
+					return
+				}
+
+				pinnedDID := r.URL.Query().Get("pinnedDID")
+				pinnedRkey := r.URL.Query().Get("pinnedRkey")
+
+				if err := persister.UpsertFeed(cmd.Context(), session.Did, rkey, pinnedDID, pinnedRkey, nil); err != nil {
 					panic(fmt.Errorf("%w: %v", errCouldNotUpsertFeed, err))
 				}
 
