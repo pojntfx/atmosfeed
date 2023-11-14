@@ -15,6 +15,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type feedMetatadata struct {
+	Rkey       string `json:"rkey"`
+	PinnedDid  string `json:"pinnedDID"`
+	PinnedRkey string `json:"pinnedRkey"`
+}
+
 func authorize(ctx context.Context) (*xrpc.Client, *xrpc.AuthInfo, error) {
 	auth := &xrpc.AuthInfo{}
 
@@ -78,7 +84,7 @@ var listCmd = &cobra.Command{
 		}
 		defer resp.Body.Close()
 
-		feeds := []string{}
+		feeds := []feedMetatadata{}
 		if err := json.NewDecoder(resp.Body).Decode(&feeds); err != nil {
 			return err
 		}
