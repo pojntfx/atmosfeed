@@ -1,7 +1,14 @@
+export interface IFeedMetadata {
+  rkey: string;
+  pinnedDID: string;
+  pinnedRkey: string;
+}
+
 export interface IFeed {
   rkey: string;
   title?: string;
   description?: string;
+  pinnedPost?: string;
 }
 
 export interface IStructuredUserdata {
@@ -11,24 +18,24 @@ export interface IStructuredUserdata {
 }
 
 export interface IStructuredUserdataFeed {
-  Did: string;
-  Rkey: string;
+  did: string;
+  rkey: string;
 }
 
 export interface IStructuredUserdataPost {
-  Did: string;
-  Rkey: string;
-  CreatedAt: string;
-  Text: string;
-  Reply: boolean;
-  Langs: string[];
-  Likes: number;
+  did: string;
+  rkey: string;
+  createdAt: string;
+  text: string;
+  reply: boolean;
+  langs: string[];
+  likes: number;
 }
 
 export interface IStructuredUserdataFeedPost {
-  FeedDid: string;
-  FeedRkey: string;
-  PostDid: string;
-  PostRkey: string;
-  Weight: number;
+  feedDid: string;
+  feedRkey: string;
+  postDID: string;
+  postRkey: string;
+  weight: number;
 }

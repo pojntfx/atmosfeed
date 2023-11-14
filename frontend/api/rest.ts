@@ -1,5 +1,5 @@
 import { AtUri, BskyAgent } from "@atproto/api";
-import { IFeed, IStructuredUserdata } from "./models";
+import { IFeed, IFeedMetadata, IStructuredUserdata } from "./models";
 
 const lexiconFeedGenerator = "app.bsky.feed.generator";
 
@@ -25,7 +25,7 @@ export class RestAPI {
           Authorization: "Bearer " + this.accessJWT,
         },
       })
-    ).json()) as string[];
+    ).json()) as IFeedMetadata[];
 
     const bskyFeeds = await this.agent.app.bsky.feed.getActorFeeds({
       actor: this.did,
@@ -40,18 +40,27 @@ export class RestAPI {
     return atmosfeedFeeds.reduce(
       (acc, v) => {
         const bskyFeed = bskyFeeds.data.feeds.find(
-          (f) => new AtUri(f.uri).rkey === v
+          (f) => new AtUri(f.uri).rkey === v.rkey
         );
+
+        let pinnedPost: string | undefined;
+        if (v.pinnedDID && v.pinnedRkey) {
+          pinnedPost = new URL(
+            `https://bsky.app/profile/${v.pinnedDID}/post/${v.pinnedRkey}`
+          ).toString();
+        }
 
         if (bskyFeed) {
           acc.published.push({
-            rkey: v,
+            rkey: v.rkey,
             title: bskyFeed.displayName,
             description: bskyFeed.description,
+            pinnedPost: pinnedPost,
           });
         } else {
           acc.unpublished.push({
-            rkey: v,
+            rkey: v.rkey,
+            pinnedPost: pinnedPost,
           });
         }
 

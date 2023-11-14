@@ -340,13 +340,13 @@ export const useAPI = (
         if (structuredUserdata.feeds) {
           await Promise.all(
             structuredUserdata.feeds.map(async (f) => {
-              const classifier = await api.exportClassifier(f.Rkey);
+              const classifier = await api.exportClassifier(f.rkey);
 
               const url = URL.createObjectURL(classifier);
               const a = document.createElement("a");
 
               a.href = url;
-              a.download = f.Rkey + ".scale";
+              a.download = f.rkey + ".scale";
               a.click();
 
               URL.revokeObjectURL(url);

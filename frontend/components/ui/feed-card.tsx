@@ -3,6 +3,7 @@ import {
   Edit,
   FileSignature,
   MoreVertical,
+  Pin,
   PlaneLanding,
   Trash,
 } from "lucide-react";
@@ -45,6 +46,17 @@ export const FeedCard: React.FC<{
 
       {feed.description && (
         <CardDescription>{feed.description}</CardDescription>
+      )}
+
+      {feed.pinnedPost && (
+        <CardDescription className="flex items-center">
+          <Pin className="mr-2 h-4 w-4" />
+          <a className="hover:underline" target="_blank" href={feed.pinnedPost}>
+            {feed.pinnedPost.length > 40
+              ? `${feed.pinnedPost.substring(0, 40)}...`
+              : feed.pinnedPost}
+          </a>
+        </CardDescription>
       )}
     </CardHeader>
 
