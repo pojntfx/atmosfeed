@@ -94,6 +94,12 @@ type structuredUserdata struct {
 	FeedPosts []models.FeedPost `json:"feedPosts"`
 }
 
+type feedMetatadata struct {
+	Rkey       string `json:"rkey"`
+	PinnedDid  string `json:"pinnedDID"`
+	PinnedRkey string `json:"pinnedRkey"`
+}
+
 var managerCmd = &cobra.Command{
 	Use:     "manager",
 	Aliases: []string{"m"},
@@ -364,9 +370,13 @@ var managerCmd = &cobra.Command{
 					panic(fmt.Errorf("%w: %v", errCouldNotGetFeeds, err))
 				}
 
-				res := []string{}
+				res := []feedMetatadata{}
 				for _, rawFeed := range rawAdminFeeds {
-					res = append(res, rawFeed.Rkey)
+					res = append(res, feedMetatadata{
+						Rkey:       rawFeed.Rkey,
+						PinnedDid:  rawFeed.PinnedDid,
+						PinnedRkey: rawFeed.PinnedRkey,
+					})
 				}
 
 				w.Header().Set("Content-Type", "application/json")
