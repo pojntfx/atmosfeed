@@ -96,7 +96,6 @@ const setupFormSchema = z.object({
 
 const pinnedPostSchema = z
   .string()
-  .url("Pinned post must be a valid Bluesky URL or empty")
   .optional()
   .refine(
     (url) => {
@@ -153,9 +152,7 @@ const createFeedSchema = z.object({
 });
 
 const editClassifierSchema = z.object({
-  classifier: z.instanceof(File, {
-    message: "Classifier is required",
-  }),
+  classifier: z.instanceof(File).optional(),
   pinnedPost: pinnedPostSchema,
 });
 
@@ -278,13 +275,27 @@ export default function Home() {
   );
 
   const [selectedRkeyFinalization, setSelectedFinalizationRkey] = useState("");
-  const [selectedRkeyClassifierEdit, setSelectedRkeyClassifierEdit] =
-    useState("");
+
   const [selectedRkeyClassifierDelete, setSelectedRkeyClassifierDelete] =
     useState("");
   const [selectedRkeyFeedUnpublish, setSelectedRkeyFeedUnpublish] =
     useState("");
   const [selectedRkeyFeedDelete, setSelectedRkeyFeedDelete] = useState("");
+
+  const [selectedRkeyClassifierEdit, setSelectedRkeyClassifierEdit] =
+    useState("");
+  useEffect(() => {
+    const feed = unpublishedFeeds.find(
+      (f) => f.rkey === selectedRkeyClassifierEdit
+    );
+    if (!feed) {
+      return;
+    }
+
+    if (feed.pinnedPost) {
+      editClassifierForm.setValue("pinnedPost", feed.pinnedPost);
+    }
+  }, [selectedRkeyClassifierEdit, unpublishedFeeds, editClassifierForm]);
 
   const [selectedRkeyFeedEdit, setSelectedRkeyFeedEdit] = useState("");
   useEffect(() => {
@@ -299,6 +310,10 @@ export default function Home() {
 
     if (feed.description) {
       editFeedForm.setValue("description", feed.description);
+    }
+
+    if (feed.pinnedPost) {
+      editFeedForm.setValue("pinnedPost", feed.pinnedPost);
     }
   }, [selectedRkeyFeedEdit, publishedFeeds, editFeedForm]);
 
@@ -991,17 +1006,30 @@ export default function Home() {
           <Form {...editClassifierForm}>
             <form
               onSubmit={editClassifierForm.handleSubmit(async (v) => {
-                try {
-                  const { did, rkey } = getDidAndRKeyFromURL(v.pinnedPost);
+                if (
+                  editFeedForm.formState.dirtyFields.classifier &&
+                  v.classifier
+                ) {
+                  try {
+                    const { did, rkey } = getDidAndRKeyFromURL(v.pinnedPost);
 
-                  await applyFeed(
-                    selectedRkeyClassifierEdit,
-                    v.classifier,
-                    did,
-                    rkey
-                  );
-                } catch (e) {
-                  return;
+                    await applyFeed(
+                      selectedRkeyFeedEdit,
+                      v.classifier,
+                      did,
+                      rkey
+                    );
+                  } catch (e) {
+                    return;
+                  }
+                } else if (editFeedForm.formState.dirtyFields.pinnedPost) {
+                  try {
+                    const { did, rkey } = getDidAndRKeyFromURL(v.pinnedPost);
+
+                    await patchFeed(selectedRkeyFeedEdit, did, rkey);
+                  } catch (e) {
+                    return;
+                  }
                 }
 
                 setSelectedRkeyClassifierEdit("");
@@ -1022,7 +1050,7 @@ export default function Home() {
                     <FormLabel>Classifier</FormLabel>
                     <FormDescription>
                       Exported Scale function (.scale file) to use as the
-                      classifier for the feed.
+                      classifier for the feed. Leave empty to keep unchanged.
                     </FormDescription>
 
                     <FormControl>
@@ -1117,10 +1145,7 @@ export default function Home() {
                   } catch (e) {
                     return;
                   }
-                } else if (
-                  editFeedForm.formState.dirtyFields.pinnedPost &&
-                  v.pinnedPost
-                ) {
+                } else if (editFeedForm.formState.dirtyFields.pinnedPost) {
                   try {
                     const { did, rkey } = getDidAndRKeyFromURL(v.pinnedPost);
 

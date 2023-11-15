@@ -71,7 +71,9 @@ export class RestAPI {
   }
 
   async resolveHandle(handle: string) {
-    console.log(handle);
+    if (!handle) {
+      return handle;
+    }
 
     let did = handle;
     if (!did.startsWith("did:")) {
