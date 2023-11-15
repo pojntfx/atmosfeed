@@ -101,6 +101,22 @@ const pinnedPostSchema = z
     (url) => {
       if (!url) return true;
 
+      try {
+        new URL(url);
+      } catch (e) {
+        return false;
+      }
+
+      return true;
+    },
+    {
+      message: "Pinned post must be a valid Bluesky URL or empty",
+    }
+  )
+  .refine(
+    (url) => {
+      if (!url) return true;
+
       const paths = new URL(url).pathname.split("/");
 
       return paths.length >= 3 && paths[2];
