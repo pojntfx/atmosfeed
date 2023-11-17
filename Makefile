@@ -10,8 +10,7 @@ WWWPREFIX ?= /atmosfeed
 # Private variables
 clis = atmosfeed-server atmosfeed-client
 pwas = frontend
-signatures = classifier
-classifiers = everything questions german trending
+signatures = $(notdir $(wildcard pkg/signatures/*))
 all: build
 
 # Build
@@ -83,13 +82,13 @@ benchmark/pwa:
 clean: clean/cli clean/pwa
 
 clean/cli:
-	rm -rf out pkg/models pkg/signatures/go/* pkg/signatures/rust/*
+	rm -rf out pkg/models pkg/signatures/*/go/*
 
 clean/pwa:
 	rm -rf frontend/node_modules frontend/.next frontend/out
 
 # Dependencies
-depend: depend/cli depend/pwa depend/signature depend/classifier
+depend: depend/cli depend/pwa depend/signature
 
 depend/cli:
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
@@ -102,13 +101,5 @@ depend/pwa:
 depend/signature: $(addprefix depend/signature/,$(signatures))
 $(addprefix depend/signature/,$(signatures)):
 	scale --no-telemetry signature generate $(subst depend/signature/,,$@):latest -d ./pkg/signatures/$(subst depend/signature/,,$@)
-	mkdir -p $(OUTPUT_DIR) pkg/signatures/$(subst depend/signature/,,$@)/go/guest pkg/signatures/$(subst depend/signature/,,$@)/go/host pkg/signatures/$(subst depend/signature/,,$@)/rust/guest
-	scale --no-telemetry signature export local/$(subst depend/signature/,,$@):latest go guest pkg/signatures/$(subst depend/signature/,,$@)/go/guest
-	scale --no-telemetry signature export local/$(subst depend/signature/,,$@):latest go host pkg/signatures/$(subst depend/signature/,,$@)/go/host
-	scale --no-telemetry signature export local/$(subst depend/signature/,,$@):latest rust guest pkg/signatures/$(subst depend/signature/,,$@)/rust/guest
-
-depend/classifier: $(addprefix depend/classifier/,$(classifiers))
-$(addprefix depend/classifier/,$(classifiers)):
-	mkdir -p $(OUTPUT_DIR)
-	scale --no-telemetry function build --release -d ./classifiers/$(subst depend/classifier/,,$@)
-	scale --no-telemetry function export local/$(subst depend/classifier/,,$@):latest $(OUTPUT_DIR)
+	mkdir -p ./pkg/signatures/$(subst depend/signature/,,$@)/go/host
+	scale --no-telemetry signature export local/$(subst depend/signature/,,$@):latest go host ./pkg/signatures/$(subst depend/signature/,,$@)/go/host
