@@ -88,10 +88,35 @@ type wellKnownService struct {
 	ServiceEndpoint string `json:"serviceEndpoint"`
 }
 
+type structuredUserdataFeed struct {
+	Did        string `json:"did"`
+	Rkey       string `json:"rkey"`
+	PinnedDid  string `json:"pinnedDID"`
+	PinnedRkey string `json:"pinnedRkey"`
+}
+
+type structuredUserdataFeedPost struct {
+	FeedDid  string `json:"feedDID"`
+	FeedRkey string `json:"feedRkey"`
+	PostDid  string `json:"postDID"`
+	PostRkey string `json:"postRkey"`
+	Weight   int32  `json:"weight"`
+}
+
+type structuredUserdataPost struct {
+	Did       string    `json:"did"`
+	Rkey      string    `json:"rkey"`
+	CreatedAt time.Time `json:"createdAt"`
+	Text      string    `json:"text"`
+	Reply     bool      `json:"reply"`
+	Langs     []string  `json:"langs"`
+	Likes     int32     `json:"likes"`
+}
+
 type structuredUserdata struct {
-	Feeds     []models.Feed     `json:"feeds"`
-	Posts     []models.Post     `json:"posts"`
-	FeedPosts []models.FeedPost `json:"feedPosts"`
+	Feeds     []structuredUserdataFeed     `json:"feeds"`
+	Posts     []structuredUserdataPost     `json:"posts"`
+	FeedPosts []structuredUserdataFeedPost `json:"feedPosts"`
 }
 
 type feedMetatadata struct {
@@ -495,19 +520,53 @@ var managerCmd = &cobra.Command{
 
 			switch r.Method {
 			case http.MethodGet:
-				feeds, err := persister.GetFeedsForDid(r.Context(), session.Did)
+				rawFeeds, err := persister.GetFeedsForDid(r.Context(), session.Did)
 				if err != nil {
 					panic(fmt.Errorf("%w: %v", errCouldNotGetFeeds, err))
 				}
 
-				posts, err := persister.GetPostsForDid(r.Context(), session.Did)
+				feeds := []structuredUserdataFeed{}
+				for _, feed := range rawFeeds {
+					feeds = append(feeds, structuredUserdataFeed{
+						feed.Did,
+						feed.Rkey,
+						feed.PinnedDid,
+						feed.PinnedRkey,
+					})
+				}
+
+				rawPosts, err := persister.GetPostsForDid(r.Context(), session.Did)
 				if err != nil {
 					panic(fmt.Errorf("%w: %v", errCouldNotGetPosts, err))
 				}
 
-				feedPosts, err := persister.GetFeedPostsForDid(r.Context(), session.Did)
+				posts := []structuredUserdataPost{}
+				for _, post := range rawPosts {
+					posts = append(posts, structuredUserdataPost{
+						post.Did,
+						post.Rkey,
+						post.CreatedAt,
+						post.Text,
+						post.Reply,
+						post.Langs,
+						post.Likes,
+					})
+				}
+
+				rawFeedPosts, err := persister.GetFeedPostsForDid(r.Context(), session.Did)
 				if err != nil {
 					panic(fmt.Errorf("%w: %v", errCouldNotGetFeedPosts, err))
+				}
+
+				feedPosts := []structuredUserdataFeedPost{}
+				for _, feedPost := range rawFeedPosts {
+					feedPosts = append(feedPosts, structuredUserdataFeedPost{
+						feedPost.FeedDid,
+						feedPost.FeedRkey,
+						feedPost.PostDid,
+						feedPost.PostRkey,
+						feedPost.Weight,
+					})
 				}
 
 				w.Header().Set("Content-Type", "application/json")
