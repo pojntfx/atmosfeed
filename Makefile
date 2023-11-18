@@ -34,11 +34,11 @@ install: install/cli install/pwa
 
 install/cli: $(addprefix install/cli/,$(clis))
 $(addprefix install/cli/,$(clis)):
-	install/cli -D -m 0755 $(OUTPUT_DIR)/$(subst install/cli/,,$@) $(DESTDIR)$(PREFIX)/bin/$(subst install/cli/,,$@)
+	install -D -m 0755 $(OUTPUT_DIR)/$(subst install/cli/,,$@) $(DESTDIR)$(PREFIX)/bin/$(subst install/cli/,,$@)
 
 install/pwa:
-	mkdir -p $(DESTDIR)$(WWWROOT)
-	cp -rf $(BUILD_DIR)/* $(DESTDIR)$(WWWROOT)$(WWWPREFIX)
+	mkdir -p $(DESTDIR)$(WWWROOT)$(WWWPREFIX)
+	tar -xvf out/frontend.tar.gz -C $(DESTDIR)$(WWWROOT)$(WWWPREFIX)
 
 # Uninstall
 uninstall: uninstall/cli uninstall/pwa
