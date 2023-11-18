@@ -34,7 +34,7 @@ make -j$(nproc) depend/cli && go run ./cmd/atmosfeed-server worker --working-dir
 git clone https://github.com/pojntfx/bluesky-feeds.git ../bluesky-feeds
 
 cd ../bluesky-feeds
-make -j$(nproc) build/function
+make -j$(nproc)
 cd ../atmosfeed
 
 export ATMOSFEED_PASSWORD='asdf'
