@@ -27,7 +27,7 @@ if [ "$1" = "test/cli" ]; then
     git config --global --add safe.directory '*'
 
     # Generate dependencies
-    make depend/cli depend/signature depend/classifier
+    make depend/cli depend/signature
 
     # Run tests
     make test/cli
@@ -82,7 +82,7 @@ if [ "$1" = "build/cli" ]; then
     git config --global --add safe.directory '*'
 
     # Generate dependencies
-    make depend/cli depend/signature depend/classifier
+    make depend/cli depend/signature
 
     # Build
     CGO_ENABLED=0 bagop -j "$(nproc)" -b "$2" -x '(android/*|ios/*|plan9/*|aix/*|linux/loong64|freebsd/riscv64|wasip1/wasm)' -p "make build/cli/$2 DST=\$DST" -d out

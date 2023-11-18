@@ -1,6 +1,10 @@
 package cmd
 
 import (
+	"log"
+	"net"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -26,6 +30,41 @@ https://github.com/pojntfx/atmosfeed`,
 
 		if err := viper.BindPFlags(cmd.PersistentFlags()); err != nil {
 			return err
+		}
+
+		if v := os.Getenv("DATABASE_URL"); v != "" {
+			log.Println("Using database address from DATABASE_URL env variable")
+
+			viper.Set(postgresURLFlag, v)
+		}
+
+		if v := os.Getenv("REDIS_URL"); v != "" {
+			log.Println("Using Redis address from REDIS_URL env variable")
+
+			viper.Set(redisURLFlag, v)
+		}
+
+		if v := os.Getenv("S3_URL"); v != "" {
+			log.Println("Using S3 address from S3_URL env variable")
+
+			viper.Set(s3URLFlag, v)
+		}
+
+		if v := os.Getenv("PORT"); v != "" {
+			log.Println("Using port from PORT env variable")
+
+			la, err := net.ResolveTCPAddr("tcp", viper.GetString(laddrFlag))
+			if err != nil {
+				return err
+			}
+
+			p, err := strconv.Atoi(v)
+			if err != nil {
+				return err
+			}
+
+			la.Port = p
+			viper.Set(laddrFlag, la.String())
 		}
 
 		return nil
