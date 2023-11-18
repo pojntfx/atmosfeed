@@ -77,7 +77,7 @@ func init() {
 	publishCmd.PersistentFlags().String(feedNameFlag, "Atmosfeed Trending", "Human-readable name for the feed)")
 	publishCmd.PersistentFlags().String(feedDescriptionFlag, "An example trending feed for Atmosfeed", "Description for the feed")
 
-	publishCmd.PersistentFlags().String(feedGeneratorDIDFlag, "did:web:atmosfeed-feeds.serveo.net", "DID of the feed generator (typically the hostname of the publicly reachable URL)")
+	publishCmd.PersistentFlags().String(feedGeneratorDIDFlag, "did:web:manager.atmosfeed.p8.lu", "DID of the feed generator (typically the hostname of the publicly reachable URL)")
 
 	viper.AutomaticEnv()
 

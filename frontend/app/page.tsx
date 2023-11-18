@@ -211,7 +211,7 @@ export default function Home() {
   const [feedGeneratorDID, setFeedGeneratorDID] = useLocalStorage(
     "atmosfeed.feedGeneratorDID",
     process.env.ATMOSFEED_FEED_GENERATOR_DID_DEFAULT ||
-      "did:web:atmosfeed-feeds.serveo.net"
+      "did:web:manager.atmosfeed.p8.lu"
   );
 
   const setupForm = useForm<z.infer<typeof setupFormSchema>>({

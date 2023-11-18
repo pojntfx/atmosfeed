@@ -34,7 +34,7 @@ https://github.com/pojntfx/atmosfeed`,
 }
 
 func Execute() error {
-	rootCmd.PersistentFlags().String(atmosfeedURLFlag, "http://localhost:1337", "Atmosfeed server URL")
+	rootCmd.PersistentFlags().String(atmosfeedURLFlag, "https://manager.atmosfeed.p8.lu", "Atmosfeed server URL")
 
 	rootCmd.PersistentFlags().String(pdsURLFlag, "https://bsky.social", "PDS URL")
 	rootCmd.PersistentFlags().String(usernameFlag, "example.bsky.social", "Bluesky username")

@@ -718,11 +718,11 @@ var managerCmd = &cobra.Command{
 
 func init() {
 	managerCmd.PersistentFlags().String(bgsURLFlag, "https://bsky.network", "BGS URL")
-	managerCmd.PersistentFlags().String(laddrFlag, "localhost:1337", "Listen address")
+	managerCmd.PersistentFlags().String(laddrFlag, ":1337", "Listen address")
 	managerCmd.PersistentFlags().Duration(ttlFlag, time.Hour*6, "Maximum age of posts to return for a feed")
 	managerCmd.PersistentFlags().Int(limitFlag, 100, "Maximum amount of posts to return for a feed")
-	managerCmd.PersistentFlags().String(feedGeneratorDIDFlag, "did:web:atmosfeed-feeds.serveo.net", "DID of the feed generator (typically the hostname of the publicly reachable URL)")
-	managerCmd.PersistentFlags().String(feedGeneratorURLFlag, "https://atmosfeed-feeds.serveo.net", "Publicly reachable URL of the feed generator")
+	managerCmd.PersistentFlags().String(feedGeneratorDIDFlag, "did:web:manager.atmosfeed.p8.lu", "DID of the feed generator (typically the hostname of the publicly reachable URL)")
+	managerCmd.PersistentFlags().String(feedGeneratorURLFlag, "https://manager.atmosfeed.p8.lu", "Publicly reachable URL of the feed generator")
 	managerCmd.PersistentFlags().String(originFlag, "https://atmosfeed.p8.lu", "Allowed CORS origin")
 	managerCmd.PersistentFlags().Bool(deleteAllPostsFlag, true, "Whether to delete all posts from the index on startup (required for compliance with the EU right to be forgotten/GDPR article 17; deletions during uptime are handled using delete commits)")
 
