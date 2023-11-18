@@ -81,7 +81,7 @@ var workerCmd = &cobra.Command{
 		log.Println("Connected to PostgreSQL")
 
 		var classifierLock sync.Mutex
-		classifiers := map[string]*scale.Scale[*signature.Signature]{}
+		classifiers := map[string]*scale.Instance[*signature.Signature]{}
 
 		fetchClassifier := func(did, rkey string) error {
 			classifierSource, err := persister.GetFeedClassifier(cmd.Context(), did, rkey)
@@ -117,7 +117,12 @@ var workerCmd = &cobra.Command{
 				return err
 			}
 
-			classifiers[path.Join(did, rkey)] = runtime
+			classifier, err := runtime.Instance()
+			if err != nil {
+				return err
+			}
+
+			classifiers[path.Join(did, rkey)] = classifier
 
 			return nil
 		}
@@ -204,7 +209,7 @@ var workerCmd = &cobra.Command{
 
 				did, rkey := path.Dir(feed), path.Base(feed)
 
-				go func(feedDid, feedRkey string, classifier *scale.Scale[*signature.Signature]) {
+				go func(feedDid, feedRkey string, classifier *scale.Instance[*signature.Signature]) {
 					defer wg.Done()
 
 					p := signature.NewPost()
@@ -226,14 +231,7 @@ var workerCmd = &cobra.Command{
 					ctx, cancel := context.WithTimeout(context.Background(), viper.GetDuration(classifierTimeoutFlag))
 					defer cancel()
 
-					instance, err := classifier.Instance()
-					if err != nil {
-						errs <- err
-
-						return
-					}
-
-					if err := instance.Run(ctx, s); err != nil {
+					if err := classifier.Run(ctx, s); err != nil {
 						errs <- err
 
 						return
