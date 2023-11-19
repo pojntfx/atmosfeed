@@ -1,9 +1,12 @@
--- name: UpsertFeed :exec
+-- name: UpsertFeedMetadata :exec
 insert into feeds (did, rkey, pinned_did, pinned_rkey)
 values ($1, $2, $3, $4) on conflict (did, rkey) do
 update
 set pinned_did = excluded.pinned_did,
     pinned_rkey = excluded.pinned_rkey;
+-- name: UpsertFeedClassifier :exec
+insert into feeds (did, rkey, pinned_did, pinned_rkey)
+values ($1, $2, '', '') on conflict (did, rkey) do nothing;
 -- name: GetFeeds :many
 select *
 from feeds;

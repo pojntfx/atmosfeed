@@ -10,28 +10,45 @@ import (
 	"github.com/pojntfx/atmosfeed/pkg/models"
 )
 
-func (p *ManagerPersister) UpsertFeed(
+func (p *ManagerPersister) UpsertFeedClassifier(
+	ctx context.Context,
+	did string,
+	rkey string,
+	classifier io.Reader,
+) error {
+	if _, err := p.blobs.PutObject(
+		ctx,
+		p.bucket,
+		path.Join(did, rkey),
+		classifier,
+		-1,
+		minio.PutObjectOptions{},
+	); err != nil {
+		return err
+	}
+
+	if err := p.queries.UpsertFeedClassifier(ctx, models.UpsertFeedClassifierParams{
+		Did:  did,
+		Rkey: rkey,
+	}); err != nil {
+		return err
+	}
+
+	if _, err := p.broker.Publish(ctx, TopicFeedUpsert, path.Join(did, rkey)).Result(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *ManagerPersister) UpsertFeedMetadata(
 	ctx context.Context,
 	did string,
 	rkey string,
 	pinnedDID string,
 	pinnedRkey string,
-	classifier io.Reader,
 ) error {
-	if classifier != nil {
-		if _, err := p.blobs.PutObject(
-			ctx,
-			p.bucket,
-			path.Join(did, rkey),
-			classifier,
-			-1,
-			minio.PutObjectOptions{},
-		); err != nil {
-			return err
-		}
-	}
-
-	if err := p.queries.UpsertFeed(ctx, models.UpsertFeedParams{
+	if err := p.queries.UpsertFeedMetadata(ctx, models.UpsertFeedMetadataParams{
 		Did:        did,
 		Rkey:       rkey,
 		PinnedDid:  pinnedDID,

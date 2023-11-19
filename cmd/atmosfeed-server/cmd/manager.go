@@ -47,24 +47,25 @@ const (
 )
 
 var (
-	errMissingFeedURI          = errors.New("missing feed URI")
-	errInvalidFeedURI          = errors.New("invalid feed URI")
-	errInvalidLimit            = errors.New("invalid limit")
-	errLimitTooHigh            = errors.New("limit too high")
-	errInvalidFeedCursor       = errors.New("invalid feed cursor")
-	errCouldNotEncode          = errors.New("could not encode")
-	errCouldNotGetSession      = errors.New("could not get session")
-	errCouldNotGetFeeds        = errors.New("could not get feeds")
-	errCouldNotGetPosts        = errors.New("could not get posts")
-	errCouldNotGetFeedPosts    = errors.New("could not get feed posts")
-	errMissingRkey             = errors.New("missing rkey")
-	errCouldNotUpsertFeed      = errors.New("could not upsert feed")
-	errCouldNotDeleteFeed      = errors.New("could not delete feed")
-	errMissingService          = errors.New("missing service")
-	errMissingResource         = errors.New("missing resource")
-	errInvalidResource         = errors.New("invalid resource")
-	errCouldNotDeletePosts     = errors.New("could not delete posts")
-	errCouldNotDeleteFeedPosts = errors.New("could not delete feed posts")
+	errMissingFeedURI             = errors.New("missing feed URI")
+	errInvalidFeedURI             = errors.New("invalid feed URI")
+	errInvalidLimit               = errors.New("invalid limit")
+	errLimitTooHigh               = errors.New("limit too high")
+	errInvalidFeedCursor          = errors.New("invalid feed cursor")
+	errCouldNotEncode             = errors.New("could not encode")
+	errCouldNotGetSession         = errors.New("could not get session")
+	errCouldNotGetFeeds           = errors.New("could not get feeds")
+	errCouldNotGetPosts           = errors.New("could not get posts")
+	errCouldNotGetFeedPosts       = errors.New("could not get feed posts")
+	errMissingRkey                = errors.New("missing rkey")
+	errCouldNotUpsertFeedMetadata = errors.New("could not upsert feed metadata")
+	errCouldNotUpsertClassifier   = errors.New("could not upsert feed classifier")
+	errCouldNotDeleteFeed         = errors.New("could not delete feed")
+	errMissingService             = errors.New("missing service")
+	errMissingResource            = errors.New("missing resource")
+	errInvalidResource            = errors.New("invalid resource")
+	errCouldNotDeletePosts        = errors.New("could not delete posts")
+	errCouldNotDeleteFeedPosts    = errors.New("could not delete feed posts")
 )
 
 type feedSkeleton struct {
@@ -410,6 +411,7 @@ var managerCmd = &cobra.Command{
 					panic(fmt.Errorf("%w: %v", errCouldNotEncode, err))
 				}
 
+			// Update the classifier
 			case http.MethodPut:
 				rkey := r.URL.Query().Get("rkey")
 				if strings.TrimSpace(rkey) == "" {
@@ -420,14 +422,11 @@ var managerCmd = &cobra.Command{
 					return
 				}
 
-				pinnedDID := r.URL.Query().Get("pinnedDID")
-				pinnedRkey := r.URL.Query().Get("pinnedRkey")
-
-				if err := persister.UpsertFeed(cmd.Context(), session.Did, rkey, pinnedDID, pinnedRkey, r.Body); err != nil {
-					panic(fmt.Errorf("%w: %v", errCouldNotUpsertFeed, err))
+				if err := persister.UpsertFeedClassifier(cmd.Context(), session.Did, rkey, r.Body); err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotUpsertClassifier, err))
 				}
 
-			// Same as PUT, except we don't replace the classifier
+			// Update the feed metadata
 			case http.MethodPatch:
 				rkey := r.URL.Query().Get("rkey")
 				if strings.TrimSpace(rkey) == "" {
@@ -441,8 +440,8 @@ var managerCmd = &cobra.Command{
 				pinnedDID := r.URL.Query().Get("pinnedDID")
 				pinnedRkey := r.URL.Query().Get("pinnedRkey")
 
-				if err := persister.UpsertFeed(cmd.Context(), session.Did, rkey, pinnedDID, pinnedRkey, nil); err != nil {
-					panic(fmt.Errorf("%w: %v", errCouldNotUpsertFeed, err))
+				if err := persister.UpsertFeedMetadata(cmd.Context(), session.Did, rkey, pinnedDID, pinnedRkey); err != nil {
+					panic(fmt.Errorf("%w: %v", errCouldNotUpsertFeedMetadata, err))
 				}
 
 			case http.MethodDelete:

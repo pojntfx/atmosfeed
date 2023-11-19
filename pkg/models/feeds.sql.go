@@ -280,7 +280,22 @@ func (q *Queries) GetFeedsForDid(ctx context.Context, did string) ([]Feed, error
 	return items, nil
 }
 
-const upsertFeed = `-- name: UpsertFeed :exec
+const upsertFeedClassifier = `-- name: UpsertFeedClassifier :exec
+insert into feeds (did, rkey, pinned_did, pinned_rkey)
+values ($1, $2, '', '') on conflict (did, rkey) do nothing
+`
+
+type UpsertFeedClassifierParams struct {
+	Did  string
+	Rkey string
+}
+
+func (q *Queries) UpsertFeedClassifier(ctx context.Context, arg UpsertFeedClassifierParams) error {
+	_, err := q.db.ExecContext(ctx, upsertFeedClassifier, arg.Did, arg.Rkey)
+	return err
+}
+
+const upsertFeedMetadata = `-- name: UpsertFeedMetadata :exec
 insert into feeds (did, rkey, pinned_did, pinned_rkey)
 values ($1, $2, $3, $4) on conflict (did, rkey) do
 update
@@ -288,15 +303,15 @@ set pinned_did = excluded.pinned_did,
     pinned_rkey = excluded.pinned_rkey
 `
 
-type UpsertFeedParams struct {
+type UpsertFeedMetadataParams struct {
 	Did        string
 	Rkey       string
 	PinnedDid  string
 	PinnedRkey string
 }
 
-func (q *Queries) UpsertFeed(ctx context.Context, arg UpsertFeedParams) error {
-	_, err := q.db.ExecContext(ctx, upsertFeed,
+func (q *Queries) UpsertFeedMetadata(ctx context.Context, arg UpsertFeedMetadataParams) error {
+	_, err := q.db.ExecContext(ctx, upsertFeedMetadata,
 		arg.Did,
 		arg.Rkey,
 		arg.PinnedDid,
