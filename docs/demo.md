@@ -15,6 +15,7 @@ make -j$(nproc) depend
 ```shell
 # Manager
 export ATMOSFEED_ORIGIN='http://localhost:3000'
+export ATMOSFEED_FEED_GENERATOR_DID='did:web:atmosfeed.serveo.net'
 make -j$(nproc) depend/cli && go run ./cmd/atmosfeed-server manager
 ```
 

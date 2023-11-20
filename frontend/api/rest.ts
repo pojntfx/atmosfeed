@@ -106,8 +106,6 @@ export class RestAPI {
     atmosfeedURL.search = new URLSearchParams({
       rkey,
       service: this.service,
-      pinnedDID: await this.resolveHandle(pinnedDID),
-      pinnedRkey,
     }).toString();
 
     await fetch(atmosfeedURL.toString(), {
@@ -118,6 +116,8 @@ export class RestAPI {
         "Content-Type": "application/octet-stream",
       },
     });
+
+    await this.patchFeed(rkey, pinnedDID, pinnedRkey);
   }
 
   async patchFeed(rkey: string, pinnedDID: string, pinnedRkey: string) {
@@ -134,7 +134,7 @@ export class RestAPI {
       method: "PATCH",
       headers: {
         Authorization: "Bearer " + this.accessJWT,
-        "Content-Type": "application/octet-stream",
+        "Content-Type": "application/json",
       },
     });
   }
