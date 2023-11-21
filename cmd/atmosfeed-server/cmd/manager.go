@@ -148,7 +148,7 @@ var managerCmd = &cobra.Command{
 		}
 		defer conn.Close()
 
-		log.Println("Connected to PDS", viper.GetString(bgsURLFlag))
+		log.Println("Connected to BGS", viper.GetString(bgsURLFlag))
 
 		options, err := redis.ParseURL(viper.GetString(redisURLFlag))
 		if err != nil {
