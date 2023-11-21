@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"net/url"
 	"path"
@@ -22,6 +23,8 @@ import (
 	"github.com/bluesky-social/indigo/repomgr"
 	iutil "github.com/bluesky-social/indigo/util"
 	"github.com/gorilla/websocket"
+	"github.com/loopholelabs/scale"
+	"github.com/loopholelabs/scale/scalefunc"
 )
 
 const (
@@ -33,14 +36,37 @@ var (
 )
 
 func main() {
-	// feedClassifier := flag.String("feed-classifier", "out/local-trending-latest.scale", "Path to the feed classifier to test")
+	feedClassifier := flag.String("feed-classifier", "local-trending-latest.scale", "Path to the feed classifier to test")
+	frontendURL := flag.String("frontend-url", "https://bsky.app", "Frontend URL to use when logging posts")
 	bgsURL := flag.String("bgs-url", "https://bsky.network", "BGS URL")
 	verbose := flag.Bool("verbose", false, "Whether to enable verbose logging")
+	minimumWeight := flag.Int64("minimum-weight", 0, "Minimum weight value the classifier has to return for a post to log it")
+	quiet := flag.Bool("quiet", true, "Whether to silently ignore any non-fatal decoding errors")
 
 	flag.Parse()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	fn, err := scalefunc.Read(*feedClassifier)
+	if err != nil {
+		panic(err)
+	}
+
+	runtime, err := scale.New(scale.NewConfig(signature.New).WithFunction(fn))
+	if err != nil {
+		panic(err)
+	}
+
+	classifier, err := runtime.Instance()
+	if err != nil {
+		panic(err)
+	}
+
+	fu, err := url.Parse(*frontendURL)
+	if err != nil {
+		panic(err)
+	}
 
 	pu, err := url.Parse(*bgsURL)
 	if err != nil {
@@ -65,7 +91,9 @@ func main() {
 		RepoCommit: func(c *atproto.SyncSubscribeRepos_Commit) error {
 			rp, err := repo.ReadRepoFromCar(ctx, bytes.NewReader(c.Blocks))
 			if err != nil {
-				log.Println("Could not parse repo, skipping:", err)
+				if !*quiet {
+					log.Println("Could not parse repo, skipping:", err)
+				}
 
 				return nil
 			}
@@ -76,7 +104,9 @@ func main() {
 				case repomgr.EvtKindCreateRecord:
 					_, res, err := rp.GetRecord(ctx, op.Path)
 					if err != nil {
-						log.Println("Could not parse record, skipping:", err)
+						if !*quiet {
+							log.Println("Could not parse record, skipping:", err)
+						}
 
 						continue l
 					}
@@ -87,14 +117,18 @@ func main() {
 
 					b, err := d.MarshalJSON()
 					if err != nil {
-						log.Println("Could not marshal lexicon, skipping:", err)
+						if !*quiet {
+							log.Println("Could not marshal lexicon, skipping:", err)
+						}
 
 						continue l
 					}
 
 					var post bsky.FeedPost
 					if err := json.Unmarshal(b, &post); err != nil {
-						log.Println("Could not unmarshal post, skipping:", err)
+						if !*quiet {
+							log.Println("Could not unmarshal post, skipping:", err)
+						}
 
 						continue l
 					}
@@ -112,7 +146,9 @@ func main() {
 						if err != nil {
 							createdAt, err = time.Parse("2006-01-02T15:04:05.999999", post.CreatedAt) // For some reason, Bsky sometimes seems to not specify the timezone
 							if err != nil {
-								log.Println(errMessageInvalidCreatedAt)
+								if !*quiet {
+									log.Println(errMessageInvalidCreatedAt)
+								}
 
 								continue l
 							}
@@ -135,14 +171,18 @@ func main() {
 					} else if post.LexiconTypeID == "app.bsky.feed.like" {
 						var like bsky.FeedLike
 						if err := json.Unmarshal(b, &like); err != nil {
-							log.Println("Could not unmarshal like, skipping:", err)
+							if !*quiet {
+								log.Println("Could not unmarshal like, skipping:", err)
+							}
 
 							continue l
 						}
 
 						u, err := iutil.ParseAtUri(like.Subject.Uri)
 						if err != nil {
-							log.Println("Could not parse like subject URI, skipping:", err)
+							if !*quiet {
+								log.Println("Could not parse like subject URI, skipping:", err)
+							}
 
 							continue l
 						}
@@ -186,6 +226,15 @@ func main() {
 	}()
 
 	for post := range postsCh {
-		log.Println(post)
+		s := signature.New()
+		s.Context.Post = &post
+
+		if err := classifier.Run(ctx, s); err != nil {
+			panic(err)
+		}
+
+		if s.Context.Weight >= *minimumWeight {
+			fmt.Println(s.Context.Weight, fu.JoinPath("profile", post.Did, "post", post.Rkey), post)
+		}
 	}
 }

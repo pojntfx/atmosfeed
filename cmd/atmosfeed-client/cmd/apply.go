@@ -106,7 +106,7 @@ var applyCmd = &cobra.Command{
 func init() {
 	applyCmd.PersistentFlags().String(feedRkeyFlag, "trending", "Machine-readable key for the feed")
 
-	applyCmd.PersistentFlags().String(feedClassifierFlag, "out/local-trending-latest.scale", "Path to the feed classifier to upload")
+	applyCmd.PersistentFlags().String(feedClassifierFlag, "local-trending-latest.scale", "Path to the feed classifier to upload")
 
 	applyCmd.PersistentFlags().String(feedPinnedDIDFlag, "", "DID of the pinned post for the feed (if left empty, no post will be pinned; empty values don't overwrite non-empty values, see --clear-pinned)")
 	applyCmd.PersistentFlags().String(feedPinnedRkeyFlag, "", "Machine-readable key of the pinned post for the feed (if left empty, no post will be pinned; empty values don't overwrite non-empty values, see --clear-pinned)")
