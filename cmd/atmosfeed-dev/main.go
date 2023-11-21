@@ -42,6 +42,7 @@ func main() {
 	verbose := flag.Bool("verbose", false, "Whether to enable verbose logging")
 	minimumWeight := flag.Int64("minimum-weight", 0, "Minimum weight value the classifier has to return for a post to log it")
 	quiet := flag.Bool("quiet", true, "Whether to silently ignore any non-fatal decoding errors")
+	maxPosts := flag.Int("max-posts", 1024*1024, "Maximum amount of posts to store in memory before clearing the cache")
 
 	flag.Parse()
 
@@ -160,6 +161,9 @@ func main() {
 						p.Reply = post.Reply != nil
 
 						postsLock.Lock()
+						if len(posts) > *maxPosts {
+							posts = map[string]*signature.Post{}
+						}
 						posts[p.Did+"/"+p.Rkey] = p
 						postsLock.Unlock()
 
