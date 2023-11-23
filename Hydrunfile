@@ -107,3 +107,33 @@ if [ "$1" = "build/pwa" ]; then
 
     exit 0
 fi
+
+# Publish signature
+if [ "$1" = "publish/signature" ]; then
+    # Install native dependencies
+    apt update
+    apt install -y curl make git
+
+    # Install bagop
+    curl -L -o /tmp/bagop "https://github.com/pojntfx/bagop/releases/latest/download/bagop.linux-$(uname -m)"
+    install /tmp/bagop /usr/local/bin
+
+    # Install Scale
+    curl -fsSL https://dl.scale.sh?analytics=false | sh
+    source ~/.bashrc
+
+    # Configure Git
+    git config --global --add safe.directory '*'
+
+    # Generate dependencies
+    make depend/signature
+
+    # Sign into Scale
+    scale --no-telemetry login -f json --api-key "${SCALE_API_KEY}"
+
+    # Push signature to Scale registry
+    scale --no-telemetry registry signature delete "${SCALE_ORG}/classifier:latest" || true # This can fail without issues if the signature does not exist yet
+    scale --no-telemetry registry signature push local/classifier:latest
+
+    exit 0
+fi

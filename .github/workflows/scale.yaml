@@ -1,0 +1,47 @@
+name: Scale CI
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 0 * * 0"
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - id: publish-signature-classifier
+            src: .
+            os: golang:bookworm
+            flags: ""
+            cmd: ./Hydrunfile publish/signature
+            dst: out/nonexistent
+
+    steps:
+      - name: Maximize build space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Set up hydrun
+        run: |
+          curl -L -o /tmp/hydrun "https://github.com/pojntfx/hydrun/releases/latest/download/hydrun.linux-$(uname -m)"
+          sudo install /tmp/hydrun /usr/local/bin
+      - name: Build and publish with hydrun
+        if: ${{ github.ref == 'refs/heads/main' }}
+        working-directory: ${{ matrix.target.src }}
+        env:
+          SCALE_ORG: ${{ secrets.SCALE_ORG }}
+          SCALE_API_KEY: ${{ secrets.SCALE_API_KEY }}
+        run: hydrun -o ${{ matrix.target.os }} ${{ matrix.target.flags }} "SCALE_ORG=${SCALE_ORG} SCALE_API_KEY=${SCALE_API_KEY} ${{ matrix.target.cmd }}"
