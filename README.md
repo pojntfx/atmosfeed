@@ -16,6 +16,30 @@ Atmosfeed is available to the public and can be used by opening it in a browser:
 
 If you prefer to self-host, see [contributing](#contributing); static binaries for the manager and worker, a `.tar.gz` archive for the frontend and an OCI image for containerization are also available on [GitHub releases](https://github.com/pojntfx/atmosfeed/releases) and [GitHub container registry](https://github.com/pojntfx/atmosfeed/packages) respectively.
 
+In addition to this publicly hosted infrastructure, a client CLI is also provided in the form of static binaries in order to make feed deployment and management from your local system easier.
+
+On Linux, you can install them like so:
+
+```shell
+curl -L -o /tmp/atmosfeed-client "https://github.com/pojntfx/atmosfeed/releases/latest/download/atmosfeed-client.linux-$(uname -m)"
+sudo install /tmp/atmosfeed-client /usr/local/bin
+```
+
+On macOS, you can use the following:
+
+```shell
+curl -L -o /tmp/atmosfeed-client "https://github.com/pojntfx/atmosfeed/releases/latest/download/atmosfeed-client.darwin-$(uname -m)"
+sudo install /tmp/atmosfeed-client /usr/local/bin
+```
+
+On Windows, the following should work (using PowerShell as administrator):
+
+```shell
+Invoke-WebRequest https://github.com/pojntfx/atmosfeed/releases/latest/download/atmosfeed-client.windows-x86_64.exe -OutFile \Windows\System32\atmosfeed-client.exe
+```
+
+You can find binaries for more operating systems and architectures on [GitHub releases](https://github.com/pojntfx/atmosfeed/releases).
+
 ## Contributing
 
 To contribute, please use the [GitHub flow](https://guides.github.com/introduction/flow/) and follow our [Code of Conduct](./CODE_OF_CONDUCT.md).
