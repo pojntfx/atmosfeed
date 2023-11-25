@@ -14,7 +14,7 @@ Atmosfeed is available to the public and can be used by opening it in a browser:
 
 <a href="https://atmosfeed.p8.lu/"><img src="https://github.com/pojntfx/webnetesctl/raw/main/img/launch.png" alt="PWA badge" width="200"/></a>
 
-If you prefer to self-host, see [contributing](#contributing); static binaries for the manager and worker, a `.tar.gz` archive for the frontend and an OCI image for containerization are also available on [GitHub releases](https://github.com/pojntfx/atmosfeed/releases) and [GitHub container registry](https://github.com/pojntfx/atmosfeed/packages) respectively.
+If you prefer to self-host, see [Contributing](#contributing); static binaries for the manager and worker, a `.tar.gz` archive for the frontend and an OCI image for containerization are also available on [GitHub releases](https://github.com/pojntfx/atmosfeed/releases) and [GitHub container registry](https://github.com/pojntfx/atmosfeed/packages) respectively.
 
 In addition to this publicly hosted infrastructure, a client CLI is also provided in the form of static binaries in order to make feed deployment and management from your local system easier.
 
@@ -39,6 +39,99 @@ Invoke-WebRequest https://github.com/pojntfx/atmosfeed/releases/latest/download/
 ```
 
 You can find binaries for more operating systems and architectures on [GitHub releases](https://github.com/pojntfx/atmosfeed/releases).
+
+## Usage
+
+### 1. Accessing an Atmosfeed Server
+
+A public Atmosfeed server is provided to you at `https://manager.atmosfeed.p8.lu`; if you prefer to host your own, see [Contributing](#contributing) for deployment instructions.
+
+### 2. Creating a Feed Classifier
+
+Atmosfeed allows creating custom "classifiers" in order to create feeds. A classifier is a [Scale function](https://scale.sh/) written in one of the supported languages (currently Go, Rust and TypeScript) that is compiled to WebAssembly `.scale` function. This classifier is then run for each new skeet posted to Bluesky, and returns a weight that determines whether the skeet will show up in the custom feed and at which position (the higher the weight, the higher the skeet's position in the feed). This allows creating feeds that are about a topic, in a specific language, from specific people, contain specific words etc., and also allows you to customize the feed order to be chronological, based on like count or any other metric.
+
+> Prefer to start with an example instead or don't have access to a terminal? Download one of the [example feeds](https://github.com/pojntfx/bluesky-feeds?tab=readme-ov-file#overview) from their [download site](https://github.com/pojntfx/bluesky-feeds/releases/tag/release-main) and jump to [Testing a Classifier Locally](#3-testing-a-classifier-locally).
+
+To create a classifier, start by [installing the Scale CLI](https://scale.sh/docs/getting-started/quick-start) and then run the following to create a new classifier based on the `felicitaspojtinger/classifier:latest` signature:
+
+```shell
+scale function new trending:latest -s felicitaspojtinger/classifier:latest -l go -d trending
+```
+
+We've named this classifier trending and will use it to build a feed that returns the most popular posts in English; we've chosen Go as the language of choice, but you could also have switched `-l go` to `-l rust` to use Rust or `-l ts` to use TypeScript.
+
+The generated `main.go` will look like this:
+
+```go
+package trending
+
+import (
+	"signature"
+)
+
+func Scale(ctx *signature.Context) (*signature.Context, error) {
+	return signature.Next(ctx)
+}
+```
+
+First, let's change this feed to return only English posts by returning a positive weight only to posts with the `en` language element:
+
+```go
+func Scale(ctx *signature.Context) (*signature.Context, error) {
+	if len(ctx.Post.Langs) == 1 && ctx.Post.Langs[0] == "en" {
+		ctx.Weight = 1
+	} else {
+		ctx.Weight = -1
+	}
+
+	return signature.Next(ctx)
+}
+```
+
+Since this will return the same weight for all posts, this feed would return posts based on insertion order. To instead return them based on their creation date, use `ctx.Weight = ctx.Post.CreatedAt`; to make this a trending feed, simply weight them by likes:
+
+```go
+func Scale(ctx *signature.Context) (*signature.Context, error) {
+	if len(ctx.Post.Langs) == 1 && ctx.Post.Langs[0] == "en" {
+		ctx.Weight = ctx.Post.Likes
+	} else {
+		ctx.Weight = -1
+	}
+
+	return signature.Next(ctx)
+}
+```
+
+### 3. Testing a Classifier Locally
+
+First, build the classifier to WebAssembly using the Scale CLI:
+
+```shell
+scale function build --release -d trending
+```
+
+Then, export the classifier to a `.scale` file:
+
+```shell
+scale function export local/trending:latest trending/out
+```
+
+Using the Atmosfeed CLI, you can now connect to the Bluesky classifier and run the classifier for each new post on your local system:
+
+```shell
+atmosfeed-client dev --feed-classifier trending/out/local-trending-latest.scale
+```
+
+As posts are being created, the classifier's weight (which will determine the post's order) as well as the URL of each post are logged to your terminal:
+
+```plaintext
+2023/11/25 22:26:16 Connected to BGS https://bsky.network
+5 https://bsky.app/profile/did:plc:lyarbqrrgmm2zjcclcnpxfpd/post/3kf24w3mtuo2b {did:plc:lyarbqrrgmm2zjcclcnpxfpd 3kf24w3mtuo2b I remain amazed that Fallout 3 let you use pickpocket to put live grenades in people's pockets and walk away for them to die horribly. [en] 5 0 true}
+7 https://bsky.app/profile/did:plc:govebcmu5zv67cpy3qdchgg4/post/3kf24w3io3n2a {did:plc:govebcmu5zv67cpy3qdchgg4 3kf24w3io3n2a ALSO thoroughly enjoyed the title and credits sequence revisiting the Matt Smith era clouds motif. Looked tremendous. [en] 7 0 true}
+20 https://bsky.app/profile/did:plc:2i3rr5wflkbtfstshwmvbn2i/post/3kf24w3u2cm2m {did:plc:2i3rr5wflkbtfstshwmvbn2i 3kf24w3u2cm2m I often have to finish the edges with a knife. One of these days I'll have to start with a knife too. [en] 20 0 true}
+5 https://bsky.app/profile/did:plc:usl5fc2l73alvigqdel377ss/post/3kf24w3ns3v2f {did:plc:usl5fc2l73alvigqdel377ss 3kf24w3ns3v2f On the day I first committed myself to a life of Zen practice. 'Zen Sickness', Zen Master Hakuin.
+t.co/yIKUfttd0s [en] 5 0 false}
+```
 
 ## Reference
 
