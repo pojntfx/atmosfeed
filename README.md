@@ -187,6 +187,52 @@ The feed should also show up in the Bluesky UI under Your Account → Feeds:
 
 ![Screenshot of the Bluesky web frontend showing the feed list](./docs/screenshot-bluesky-frontend-feeds.png)
 
+### 6. Updating a Feed and Classifier
+
+It is possible to update a feed and the associated classifier after pushing/publishing. To update a feed classifier or the pinned post using the Atmosfeed CLI, simply run `apply` again:
+
+```shell
+atmosfeed-client apply --feed-rkey trending --feed-classifier trending/out/local-trending-latest.scale
+```
+
+Please note that empty values for `--pinned-feed-did` and `--pinned-feed-rkey` are ignored in order to allow updating the classifier in isolation; if you want to set them to empty values, pass `--clear-pinned`.
+
+To update a published feed's values, you can simply publish it again:
+
+```shell
+atmosfeed-client publish --feed-rkey trending --feed-name 'Trending' --feed-description 'Most popular trending posts on Bluesky'
+```
+
+In order to update a pushed feed or a published feed using the [Atmosfeed UI](https://atmosfeed.p8.lu/), you can simply use the edit wizard:
+
+![Screenshot of the feed edit wizard](./docs/screenshot-edit-feed-wizard.png)
+
+### 7. Deleting a Feed and Classifier
+
+Both the Atmosfeed CLI and UI support deleting feed classifiers from Atmosfeed and unpublishing feeds from Bluesky.
+
+To unpublish a feed, but keep the classifier, you can use the `unpublish` command:
+
+```shell
+atmosfeed-client unpublish --feed-rkey trending
+```
+
+To then delete the classifier, use the `delete` command:
+
+```shell
+atmosfeed-client delete --feed-rkey trending
+```
+
+Similarly so, you can use the [Atmosfeed UI](https://atmosfeed.p8.lu/) to unpublish a feed by using the unpublish option in the feed list:
+
+![Screenshot of the feed unpublish option](./docs/screenshot-unpublish-feed.png)
+
+Once unpublished, you can delete the feed's classifier by using the delete option in the feed list:
+
+![Screenshot of the classifier delete option](./docs/screenshot-delete-classifier.png)
+
+🚀 That's it! We can't wait to see what you're going to build with Atmosfeed. Be sure to take a look at the [reference](#reference) and [example feeds](https://github.com/pojntfx/bluesky-feeds?tab=readme-ov-file#overview) for more information.
+
 ## Reference
 
 ### Command Line Arguments
@@ -600,17 +646,17 @@ go run ./cmd/atmosfeed-client/ apply --feed-rkey trending --feed-classifier ./ou
 go run ./cmd/atmosfeed-client/ publish --feed-rkey trending --feed-name 'Atmosfeed Trending' --feed-description 'Most popular trending posts on Bluesky in the last 24h (testing feed)'
 
 # Remove example feeds
-go run ./cmd/atmosfeed-client/ delete --feed-rkey questions
 go run ./cmd/atmosfeed-client/ unpublish --feed-rkey questions
+go run ./cmd/atmosfeed-client/ delete --feed-rkey questions
 
-go run ./cmd/atmosfeed-client/ delete --feed-rkey german
 go run ./cmd/atmosfeed-client/ unpublish --feed-rkey german
+go run ./cmd/atmosfeed-client/ delete --feed-rkey german
 
-go run ./cmd/atmosfeed-client/ delete --feed-rkey everything
 go run ./cmd/atmosfeed-client/ unpublish --feed-rkey everything
+go run ./cmd/atmosfeed-client/ delete --feed-rkey everything
 
-go run ./cmd/atmosfeed-client/ delete --feed-rkey trending
 go run ./cmd/atmosfeed-client/ unpublish --feed-rkey trending
+go run ./cmd/atmosfeed-client/ delete --feed-rkey trending
 
 # Start frontend
 cd frontend
