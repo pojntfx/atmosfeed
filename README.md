@@ -149,6 +149,44 @@ In the wizard, you can then select the `rkey` of your feed (this is what Bluesky
 
 ![Screenshot of the initial state with the feed creation wizard opened](./docs/screenshot-create-feed-wizard.png)
 
+### 5. Publishing a Feed
+
+Once you have uploaded the a feed classifier to Atmosfeed, you can publish your feed to Bluesky. One option to do this is to use the Atmosfeed CLI like so:
+
+```shell
+atmosfeed-client publish --feed-rkey trending --feed-name 'Trending' --feed-description 'Most popular trending posts on Bluesky'
+```
+
+Alternatively, you can do this using the [Atmosfeed UI](https://atmosfeed.p8.lu/) by clicking the "Finalize" button for your uploaded feed:
+
+![Screenshot of the unpublished feeds list](./docs/screenshot-unpublished-feeds.png)
+
+This will open up the feed finalization/publishing wizard, where it is possible to set the display name and a description:
+
+![Screenshot of the feed finalization wizard](./docs/screenshot-publish-wizard.png)
+
+After having published a feed, it will show up in your list of published feeds:
+
+![Screenshot of the published feeds list](./docs/screenshot-published-feeds.png)
+
+It is also possible to retrieve this list by using the Atmosfeed CLI:
+
+```shell
+atmosfeed-client list
+```
+
+Which will return it in YAML format:
+
+```yaml
+- rkey: trending
+  pinneddid: ""
+  pinnedrkey: ""
+```
+
+The feed should also show up in the Bluesky UI under Your Account → Feeds:
+
+![Screenshot of the Bluesky web frontend showing the feed list](./docs/screenshot-bluesky-frontend-feeds.png)
+
 ## Reference
 
 ### Command Line Arguments
