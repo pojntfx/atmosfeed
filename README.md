@@ -50,7 +50,7 @@ A public Atmosfeed server is provided to you at `https://manager.atmosfeed.p8.lu
 
 Atmosfeed allows creating custom "classifiers" in order to create feeds. A classifier is a [Scale function](https://scale.sh/) written in one of the supported languages (currently Go, Rust and TypeScript) that is compiled to WebAssembly `.scale` function. This classifier is then run for each new skeet posted to Bluesky, and returns a weight that determines whether the skeet will show up in the custom feed and at which position (the higher the weight, the higher the skeet's position in the feed). This allows creating feeds that are about a topic, in a specific language, from specific people, contain specific words etc., and also allows you to customize the feed order to be chronological, based on like count or any other metric.
 
-> Prefer to start with an example instead or don't have access to a terminal? Download one of the [example feeds](https://github.com/pojntfx/bluesky-feeds?tab=readme-ov-file#overview) from their [download site](https://github.com/pojntfx/bluesky-feeds/releases/tag/release-main) and jump to [Testing a Classifier Locally](#3-testing-a-classifier-locally).
+> Prefer to start with an example instead or don't have access to a terminal? Download one of the [example feeds](https://github.com/pojntfx/bluesky-feeds?tab=readme-ov-file#overview) from their [download site](https://github.com/pojntfx/bluesky-feeds/releases/tag/release-main) and jump to either [Testing a Classifier Locally](#3-testing-a-classifier-locally) or [Pushing the Classifier](#4-pushing-the-classifier).
 
 To create a classifier, start by [installing the Scale CLI](https://scale.sh/docs/getting-started/quick-start) and then run the following to create a new classifier based on the `felicitaspojtinger/classifier:latest` signature:
 
@@ -132,6 +132,22 @@ As posts are being created, the classifier's weight (which will determine the po
 5 https://bsky.app/profile/did:plc:usl5fc2l73alvigqdel377ss/post/3kf24w3ns3v2f {did:plc:usl5fc2l73alvigqdel377ss 3kf24w3ns3v2f On the day I first committed myself to a life of Zen practice. 'Zen Sickness', Zen Master Hakuin.
 t.co/yIKUfttd0s [en] 5 0 false}
 ```
+
+### 4. Pushing the Classifier
+
+After building and testing a classifier locally, you can continue by pushing it to the Atmosfeed server. To do so, you can either use the Atmosfeed CLI (see [Command Line Arguments](#command-line-arguments) for more information):
+
+```shell
+atmosfeed-client apply --feed-rkey trending --feed-classifier trending/out/local-trending-latest.scale
+```
+
+Or by visiting the [Atmosfeed UI](https://atmosfeed.p8.lu/) and using the "Create a new feed" wizard after signing in with your Bluesky account:
+
+![Screenshot of the initial state with the create feed button selected](./docs/screenshot-initial.png)
+
+In the wizard, you can then select the `rkey` of your feed (this is what Bluesky uses to uniquely identify the feeds of a user; you'll be able to set the display name at a later point); it is also possible to specify a pinned posts, which will then always show up at the top of your feed:
+
+![Screenshot of the initial state with the feed creation wizard opened](./docs/screenshot-create-feed-wizard.png)
 
 ## Reference
 
